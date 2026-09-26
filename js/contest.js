@@ -221,6 +221,7 @@ const Contest = {
     log.contests++;
     if (passed) log.contestsPassed++;
     log.contestSecs += usedSec;
+    (Store.state.events ??= []).push({ t: Date.now(), type: "contest", id: c.name, passed });
     log.seconds += usedSec;          // contest ka time bhi padhai ka time hai
     Store.state.lastActive = new Date().toISOString();
     Store.state.contest = null;

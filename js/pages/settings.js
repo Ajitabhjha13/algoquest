@@ -23,6 +23,20 @@ const SettingsPage = {
       <h1 class="page-title">Settings</h1>
       <p class="page-sub">Your daily plan and finish date are calculated from these settings.</p>
 
+      <section class="card form-section appearance">
+        <div>
+          <h2 class="section-title">🎨 Appearance</h2>
+          <p class="hint">Choose how the website looks. System follows your computer's setting.</p>
+        </div>
+        <div class="theme-cards">
+          ${[["dark", "🌙", "Dark"], ["light", "☀️", "Light"], ["system", "💻", "System"]].map(([v, i, l]) => `
+            <button type="button" class="theme-card ${(Store.settings.theme || "dark") === v ? "on" : ""}" data-theme-set="${v}">
+              <span class="tc-preview tc-${v}"><i></i><i></i><i></i></span>
+              <span>${i} ${l}</span>
+            </button>`).join("")}
+        </div>
+      </section>
+
       <form id="settings-form">
         <section class="card form-section">
           <h2 class="section-title">Weekly study hours</h2>
@@ -88,6 +102,7 @@ const SettingsPage = {
         </div>
       </section>
 
+      <p class="muted small settings-about">AlgoQuest · <a href="#/about">About this project</a></p>
       <div id="toast" class="toast" role="status"></div>
     `;
   },
@@ -143,6 +158,13 @@ const SettingsPage = {
   },
 
   afterRender() {
+    document.getElementById("app").onclick = e => {
+      const b = e.target.closest("[data-theme-set]");
+      if (!b) return;
+      Store.updateSettings({ theme: b.dataset.themeSet });
+      Theme.apply();
+      document.querySelectorAll(".theme-card").forEach(x => x.classList.toggle("on", x === b));
+    };
     const form = document.getElementById("settings-form");
     this.updateSummary();
 

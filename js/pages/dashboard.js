@@ -255,6 +255,47 @@ const DashboardPage = {
       ${l.reflection ? `<div class="tip-reflect">✍️ ${esc(l.reflection)}</div>` : ""}`;
   },
 
+  // ---------------- KPI STRIP (reference design ke top cards jaisa) ----------------
+  spark(values, color) {
+    const w = 140, h = 40, max = Math.max(1, ...values);
+    const pts = values.map((v, i) => [+(i * (w / (values.length - 1))).toFixed(1), +(h - 3 - (v / max) * (h - 8)).toFixed(1)]);
+    const line = pts.map(p => p.join(",")).join(" ");
+    const id = "sp" + Math.random().toString(36).slice(2, 7);
+    return `<svg class="kpi-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+      <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity="0.35"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+      <polygon points="0,${h} ${line} ${w},${h}" fill="url(#${id})"/>
+      <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+  },
+
+  kpiStrip(ctx) {
+    const days = [...Array(14)].map((_, i) => formatDate(addDays(parseDate(todayStr()), i - 13)));
+    const L = d => Store.state.log[d] || {};
+    const sum = (list, f) => list.reduce((a, d) => a + f(L(d)), 0);
+    const thisW = days.slice(7), lastW = days.slice(0, 7);
+    const delta = (a, b) => b ? Math.round(((a - b) / b) * 100) : (a ? 100 : 0);
+    const chip = d => `<span class="kpi-delta ${d >= 0 ? "up" : "down"}">${d >= 0 ? "▲" : "▼"} ${Math.abs(d)}%</span>`;
+    const pMain = sum(thisW, l => l.main || 0), pMainPrev = sum(lastW, l => l.main || 0);
+    const hrs = sum(thisW, l => l.seconds || 0) / 3600, hrsPrev = sum(lastW, l => l.seconds || 0) / 3600;
+    const tasks = sum(thisW, l => l.done || 0), tasksPrev = sum(lastW, l => l.done || 0);
+    const conf = Insights.confidenceHistory();
+    const cards = [
+      { icon: "🎯", tone: "amber", label: "Problems solved", value: ctx.solved, sub: `${pMain} this week`, d: delta(pMain, pMainPrev), series: days.map(d => L(d).main || 0), color: "#f4b740" },
+      { icon: "⏱️", tone: "teal", label: "Hours this week", value: hrs.toFixed(1), sub: `${hrsPrev.toFixed(1)} h last week`, d: delta(hrs, hrsPrev), series: days.map(d => (L(d).seconds || 0) / 3600), color: "#2ee6a6" },
+      { icon: "✅", tone: "violet", label: "Tasks this week", value: tasks, sub: `${tasksPrev} last week`, d: delta(tasks, tasksPrev), series: days.map(d => L(d).done || 0), color: "#a78bfa" },
+      { icon: "🏆", tone: "blue", label: "Contest confidence", value: conf.length ? conf[conf.length - 1] : "–", sub: `${Contest.history.filter(h => h.passed).length} passed / ${Contest.history.length}`,
+        d: conf.length > 1 ? conf[conf.length - 1] - conf[conf.length - 2] : null, series: conf.length > 1 ? conf.slice(-14) : [0, 0], color: "#5d8bff" },
+    ];
+    return `<div class="kpi-strip">${cards.map(c => `
+      <div class="card kpi">
+        <div class="kpi-head"><span class="kpi-icon tone-${c.tone}">${c.icon}</span><span class="kpi-label">${c.label}</span></div>
+        <div class="kpi-body">
+          <div><div class="kpi-value">${c.value}</div><div class="kpi-sub">${c.sub}</div></div>
+          ${this.spark(c.series, c.color)}
+        </div>
+        ${c.d === null ? `<span class="kpi-delta flat">—</span>` : chip(c.d)}
+      </div>`).join("")}</div>`;
+  },
+
   // ---------------- TROPHY CABINET ----------------
   // Header mein: sabse naya trophy dikhta hai, baaki sab dropdown mein (kyun mila + kab mila)
   trophyCabinet(badges) {
@@ -391,6 +432,7 @@ const DashboardPage = {
     this._badges = badges;
     const nextBadges = badges.filter(b => !b.done).sort((a, b) => b.cur / b.goal - a.cur / a.goal).slice(0, 3);
     const reflection = (Store.state.log[todayStr()] || {}).reflection || "";
+    const goals = Analytics.goals();
     const confLabel = !cs.taken ? "No contests yet" : cs.conf >= 75 ? "Strong" : cs.conf >= 45 ? "Building up" : "Needs practice";
 
     let tasksHtml;
@@ -411,7 +453,7 @@ const DashboardPage = {
     return `
       <div class="dash-head">
         <div>
-          <h1 class="page-title">${this.greeting()}, Ajitabh</h1>
+          <h1 class="page-title">${this.greeting()}, ${esc(Profile.firstName())}</h1>
           <p class="page-sub">${new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
           <p class="quote">“${this.quote()}”</p>
         </div>
@@ -424,6 +466,8 @@ const DashboardPage = {
           ${this.trophyCabinet(badges)}
         </div>
       </div>
+
+      ${this.kpiStrip(await Insights.context())}
 
       <div class="dash-charts">
         <div class="card combined">
@@ -537,6 +581,25 @@ const DashboardPage = {
         </section>
 
         <aside class="dash-side">
+          <div class="card goals-card">
+            <div class="dash-title-row"><div class="muted small">🎯 THIS WEEK'S GOALS</div>
+              <button class="linkbtn" data-action="goal-edit">${this.editGoals ? "Cancel" : "Edit"}</button></div>
+            ${this.editGoals ? `
+              <div class="goal-form">
+                ${[["main", "Problems"], ["warmup", "Warm-ups"], ["lecture", "Lectures"], ["hours", "Hours"]].map(([k, l]) =>
+                  `<label><span>${l}</span><input type="number" min="0" max="500" data-goal="${k}" value="${goals.targets[k]}"></label>`).join("")}
+              </div>
+              <button class="btn btn-sm btn-primary" data-action="goal-save" style="margin-top:10px">Save goals</button>
+              <p class="muted small">Set 0 to skip a goal. Goals carry over to every week.</p>`
+            : `${[["main", "Problems", "var(--c-main)"], ["warmup", "Warm-ups", "var(--c-warmup)"], ["lecture", "Lectures", "var(--c-lectures)"], ["hours", "Hours", "var(--r-epic)"]]
+                .filter(([k]) => goals.targets[k] > 0).map(([k, l, c]) => {
+                  const v = k === "hours" ? Math.floor(goals.prog[k] * 10) / 10 : goals.prog[k], t = goals.targets[k];
+                  return `<div class="goal"><div class="meter-top"><span>${l}</span><b>${v} / ${t}${v >= t ? " ✓" : ""}</b></div>
+                    <div class="bar"><div style="width:${Math.min(100, Math.round((v / t) * 100))}%;background:${c}"></div></div></div>`;
+                }).join("")}
+              <p class="muted small goal-foot">${goals.allMet ? "🎉 All goals done this week!" : `Week of ${prettyDate(goals.week)}`}${goals.metCount ? ` · ${goals.metCount} week${goals.metCount > 1 ? "s" : ""} completed` : ""}</p>`}
+          </div>
+
           <div class="card cal-card">
             <div class="muted small">ACTIVITY</div>
             ${this.calendar()}
@@ -637,6 +700,13 @@ const DashboardPage = {
           QuestionPanel.open(task);
           return;
         case "pull": await this.pullNext(); break;
+        case "goal-edit": this.editGoals = !this.editGoals; break;
+        case "goal-save":
+          document.querySelectorAll("[data-goal]").forEach(i => { Store.state.goals.targets[i.dataset.goal] = Math.max(0, Number(i.value) || 0); });
+          Store.save();
+          this.editGoals = false;
+          showToast("Weekly goals saved 🎯");
+          break;
         case "reflect": {
           const v = document.getElementById("reflect-in").value.trim();
           Tracker.dayLog().reflection = v;

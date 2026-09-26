@@ -6,6 +6,7 @@
 // =========================================================
 const routes = {
   dashboard: DashboardPage,
+  about: AboutPage,
   "plan/warmup": WarmupPage,
   "plan/main": MainQuestPage,
   plan2: Plan2Page,
@@ -17,6 +18,35 @@ const routes = {
 };
 
 let currentPage = null;
+let lastPageName = null;
+
+// ---------- THEME (dark / light / system) ----------
+const Theme = {
+  resolved() {
+    const t = Store.settings.theme || "dark";
+    return t === "system" ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark") : t;
+  },
+  apply() {
+    document.documentElement.dataset.theme = this.resolved();
+    // Java code colouring bhi theme ke saath
+    const hl = document.querySelector('link[href*="highlight.js"]');
+    if (hl) hl.href = hl.href.replace(/github(-dark)?\.min\.css/, this.resolved() === "light" ? "github.min.css" : "github-dark.min.css");
+  },
+  toggle() {
+    Store.updateSettings({ theme: this.resolved() === "dark" ? "light" : "dark" });
+    this.apply();
+  },
+};
+matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => Theme.apply());
+document.addEventListener("click", e => {
+  if (e.target.closest("#theme-toggle")) Theme.toggle();
+});
+
+// ---------- SKELETON: page aate waqt halka placeholder ----------
+const SKELETON = `
+  <div class="skel skel-title"></div><div class="skel skel-sub"></div>
+  <div class="skel-grid"><div class="skel skel-card"></div><div class="skel skel-card"></div><div class="skel skel-card"></div></div>
+  <div class="skel skel-block"></div>`;
 
 // ---------- TOAST: chhota popup jo kahin bhi click karne pe ya 4 sec mein gayab ----------
 function showToast(msg) {
@@ -67,8 +97,23 @@ async function renderRoute() {
   if (inPlan) document.getElementById("nav-plan")?.classList.add("open");
 
   currentPage = page;
+  Profile.refreshSidebar();
+
+  // Naya page? Toh skeleton + halka fade-in. Same page ka re-render? Bina animation.
+  const isNewPage = pageName !== lastPageName;
+  lastPageName = pageName;
+  const skelTimer = isNewPage ? setTimeout(() => { app.innerHTML = SKELETON; }, 120) : null;
   try {
-    app.innerHTML = await page.render();
+    const html = await page.render();
+    clearTimeout(skelTimer);
+    app.innerHTML = html;
+    if (isNewPage) {
+      app.classList.remove("page-enter");
+      void app.offsetWidth; // animation dobara chalane ke liye
+      app.classList.add("page-enter");
+      setTimeout(() => app.classList.remove("page-enter"), 1100); // baad ke re-render pe dobara animation nahi
+      window.scrollTo(0, 0);
+    }
     if (page.afterRender) page.afterRender(); // buttons wagairah ke liye (aage kaam aayega)
   } catch (err) {
     app.innerHTML = `<p class="error">Could not load page: ${err.message}</p>`;
@@ -90,4 +135,4 @@ document.addEventListener("click", e => {
 
 // Jab bhi URL ka # badle, ya page pehli baar khule
 window.addEventListener("hashchange", renderRoute);
-window.addEventListener("DOMContentLoaded", renderRoute);
+window.addEventListener("DOMContentLoaded", () => { Theme.apply(); renderRoute(); });

@@ -163,6 +163,7 @@ const Insights = {
       blindPassed: Contest.history.filter(h => h.blind && h.passed).length,
       speedPassed: Contest.history.filter(h => h.kind === "speed" && h.passed).length,
       fastPass: Contest.history.filter(h => h.passed && h.usedSec <= h.minutes * 30).length,
+      goalsMet: (Store.state.goals?.met || []).length,
       winRun: (() => { let best = 0, run = 0; Contest.history.forEach(h => { run = h.passed ? run + 1 : 0; best = Math.max(best, run); }); return best; })(),
       reflections: Object.values(log).filter(l => l.reflection?.trim()).length,
     };
@@ -201,6 +202,8 @@ const Insights = {
     { id: "sd", cat: "contests", icon: "⚡", name: "Lightning Fingers", rarity: "rare", desc: "Pass a Speed Round", v: c => c.speedPassed, goal: 1 },
     { id: "fast", cat: "contests", icon: "🚀", name: "Speedster", rarity: "epic", desc: "Pass a contest using less than half the time", v: c => c.fastPass, goal: 1 },
     { id: "run3", cat: "contests", icon: "🔥", name: "Hat-trick", rarity: "legendary", desc: "Pass 3 contests in a row", v: c => c.winRun, goal: 3 },
+    { id: "goal1", cat: "habit", icon: "🎯", name: "Goal Getter", rarity: "rare", desc: "Complete all your weekly goals once", v: c => c.goalsMet, goal: 1 },
+    { id: "goal4", cat: "habit", icon: "🗓️", name: "Month of Focus", rarity: "epic", desc: "Complete your weekly goals in 4 different weeks", v: c => c.goalsMet, goal: 4 },
     { id: "r7", cat: "habit", icon: "✍️", name: "Reflective", rarity: "common", desc: "Write 7 daily reflections", v: c => c.reflections, goal: 7 },
   ],
 

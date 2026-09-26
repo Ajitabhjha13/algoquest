@@ -37,6 +37,8 @@ const Tracker = {
       else Store.state.progress[task.id].status = "pending";
       log.done = Math.max(0, log.done - 1);
       log[task.type] = Math.max(0, log[task.type] - 1);
+      const ev = Store.state.events || [];
+      for (let i = ev.length - 1; i >= 0; i--) if (ev[i].id === task.id) { ev.splice(i, 1); break; }
       log.estMin = Math.max(0, log.estMin - this.estimateFor(task));
     } else {
       if (task.type === "warmup") Warmup.markDone(task.id);
@@ -48,6 +50,8 @@ const Tracker = {
       log.done++;
       log[task.type]++;
       log.estMin += this.estimateFor(task);
+      // Event: kab (exact time) aur kya kiya. Study patterns, journey, records isi se.
+      (Store.state.events ??= []).push({ t: Date.now(), type: task.type, id: task.id });
     }
     Store.state.lastActive = new Date().toISOString();
     Store.save();

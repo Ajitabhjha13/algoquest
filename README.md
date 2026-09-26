@@ -1,4 +1,4 @@
-# DSA Planner
+# AlgoQuest
 
 Personal DSA preparation planner: YouTube playlist + problem roadmap + daily sprints, timer and progress tracking.
 

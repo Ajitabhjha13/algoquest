@@ -23,6 +23,7 @@ const DEFAULT_STATE = {
     studyMultiplier: 1.5,   // video pause karke code likhne ka extra time
     warmupCount: 10,        // roz kitne warm-up questions
     lectureShare: 45,       // warm-up ke baad bache time ka kitna % Lectures ko
+    theme: "dark",          // "dark" | "light" | "system"
   },
   // Warm-up shuffle bag
   warmup: { round: 0, mode: "full", order: [], done: {}, tooEasy: [], history: {} },
@@ -46,6 +47,25 @@ const DEFAULT_STATE = {
 const Store = {
   state: null,
 
+  // ---------------- FRESH START ----------------
+  // Asli practice 27 September 2026 se shuru. Testing ka saara data ek baar saaf,
+  // lekin settings (hours, target), profile, imported playlist aur saved contest designs bache rehte hain.
+  FRESH_START: "2026-09-27",
+
+  freshStart() {
+    const st = this.state;
+    if (st.freshStart === this.FRESH_START) return;
+    const keep = {
+      settings: { ...st.settings, startDate: this.FRESH_START },
+      profile: st.profile,
+      videos: st.videos ? { ...st.videos, notice: null, sprintStart: this.FRESH_START } : null,
+      contestTemplates: st.contestTemplates || [],
+      goals: st.goals,
+    };
+    this.state = { ...structuredClone(DEFAULT_STATE), ...keep, freshStart: this.FRESH_START };
+    this.save();
+  },
+
   load() {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -56,6 +76,7 @@ const Store = {
     } catch {
       this.state = structuredClone(DEFAULT_STATE);
     }
+    this.freshStart();
     return this.state;
   },
 
@@ -83,14 +104,14 @@ const Store = {
     const blob = new Blob([JSON.stringify(this.state, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `dsa-planner-backup-${todayStr()}.json`;
+    a.download = `algoquest-backup-${todayStr()}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   },
 
   importData(jsonText) {
     const data = JSON.parse(jsonText); // galat file hui toh yahin error aayega
-    if (!data.settings) throw new Error("This does not look like a DSA Planner backup file");
+    if (!data.settings) throw new Error("This does not look like an AlgoQuest backup file");
     this.state = data;
     this.save();
   },
