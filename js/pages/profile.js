@@ -62,9 +62,12 @@ const Profile = {
     const parts = (this.data.name || "?").trim().split(/\s+/);
     return ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase(); // "Ajitabh Kumar Jha" → AK
   },
+  // Photo: profile mein upload ki hui → assets/ajitabh.jpg → initials
   avatar(cls = "avatar") {
     const p = this.data;
-    return p.photo ? `<img class="${cls} has-photo" src="${p.photo}" alt="${esc(p.name)}">` : `<div class="${cls}">${esc(this.initials())}</div>`;
+    if (p.photo) return `<img class="${cls} has-photo" src="${p.photo}" alt="${esc(p.name)}">`;
+    const fb = `<div class="${cls}">${esc(this.initials())}</div>`;
+    return `<img class="${cls} has-photo" src="assets/ajitabh.jpg" alt="${esc(p.name)}" onerror="this.outerHTML=this.dataset.fb" data-fb='${fb.replace(/'/g, "&#39;")}'>`;
   },
   // Username ya poora link, dono chalenge
   url(key, v) {
