@@ -16,7 +16,7 @@ public class HelloController {
     @GetMapping("/hello")
     public Map<String, Object> hello() {
         return Map.of(
-                "message", "Hello from AlgoQuest API",
+                "message", "Hello Ajitabh, API is live",
                 "status", "running",
                 "time", Instant.now().toString());
     }
