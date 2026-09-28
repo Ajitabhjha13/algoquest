@@ -49,6 +49,12 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- NAYA: "Sign in with GitHub / Google" (OAuth 2.0 login) + Spring Security -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-client</artifactId>
+		</dependency>
+
 		<!-- Input check karne ke liye (jaise email sahi format mein hai ya nahi) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
