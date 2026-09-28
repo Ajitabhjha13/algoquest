@@ -55,6 +55,12 @@
 			<artifactId>spring-boot-starter-oauth2-client</artifactId>
 		</dependency>
 
+				<!-- NAYA: JWT token banana aur check karna -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+		</dependency>
+
 		<!-- Input check karne ke liye (jaise email sahi format mein hai ya nahi) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

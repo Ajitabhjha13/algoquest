@@ -6,11 +6,16 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 //   algoquest.owner.github-login  ->  owner().githubLogin()
 //   algoquest.owner.email         ->  owner().email()
 //   algoquest.frontend-url        ->  frontendUrl()
-// "record" = chhoti, sirf data rakhne wali class (getters apne aap bante hain)
+//   algoquest.jwt.secret          ->  jwt().secret()
+//   algoquest.jwt.ttl-days        ->  jwt().ttlDays()
 @ConfigurationProperties(prefix = "algoquest")
-public record AppProperties(Owner owner, String frontendUrl) {
+public record AppProperties(Owner owner, String frontendUrl, Jwt jwt) {
 
     // Sirf yahi log login kar sakte hain (allowlist)
     public record Owner(String githubLogin, String email) {
+    }
+
+    // Token ki settings
+    public record Jwt(String secret, int ttlDays) {
     }
 }
