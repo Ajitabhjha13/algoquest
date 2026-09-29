@@ -19,7 +19,8 @@ public class SecurityConfig {
     SecurityFilterChain filterChain(HttpSecurity http,
             GithubUserService githubUsers,
             GoogleUserService googleUsers,
-            LoginSuccessHandler loginSuccessHandler) throws Exception {
+            LoginSuccessHandler loginSuccessHandler,
+            LoginFailureHandler loginFailureHandler) throws Exception {
         http
                 // 1. Kaunse URLs bina login khule hain
                 .authorizeHttpRequests(auth -> auth
@@ -35,17 +36,16 @@ public class SecurityConfig {
                         .userInfoEndpoint(info -> info
                                 .userService(githubUsers)
                                 .oidcUserService(googleUsers))
-                        .successHandler(loginSuccessHandler) // login ho gaya -> JWT pass -> website
-                        .failureUrl("/api/auth/denied"))
+                        .successHandler(loginSuccessHandler) // login ho gaya -> history -> JWT pass -> website
+                        .failureHandler(loginFailureHandler) // fail -> history mein likho -> "private planner"
+                )
                 // 3. API requests "Authorization: Bearer <JWT>" se pehchani jaati hain
                 .oauth2ResourceServer(rs -> rs.jwt(Customizer.withDefaults()))
-                // 4. /api/** pe bina pass aaye toh login page nahi, seedha 401 (website ke liye
-                // saaf jawab)
+                // 4. /api/** pe bina pass aaye toh login page nahi, seedha 401
                 .exceptionHandling(ex -> ex.defaultAuthenticationEntryPointFor(
                         new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
                         PathPatternRequestMatcher.withDefaults().matcher("/api/**")))
-                // 5. Bearer token wali APIs pe CSRF ki zaroorat nahi (woh cookie wale attack ke
-                // liye hota hai)
+                // 5. Bearer token wali APIs pe CSRF ki zaroorat nahi
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"));
 
         return http.build();
