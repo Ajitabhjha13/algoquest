@@ -7,6 +7,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Great+Vibes&display=swap" rel="stylesheet">
+  <!-- 127.0.0.1 aur localhost browser ke liye ALAG websites hain (alag localStorage).
+       Login hamesha localhost pe wapas aata hai, isliye 127.0.0.1 ko localhost pe bhej do. -->
+  <script>
+    if (location.hostname === "127.0.0.1") location.replace(location.href.replace("//127.0.0.1", "//localhost"));
+  </script>
   <!-- Theme page dikhne se PEHLE lagao, taaki light mode mein ek pal ke liye kaala flash na ho -->
   <script>
     (function () {
@@ -113,6 +118,7 @@
   <!-- Order important hai: pehle data + pages, last mein router -->
   <script src="js/data.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/api.js"></script>
   <script src="js/warmup.js"></script>
   <script src="js/scheduler.js"></script>
   <script src="js/tracker.js"></script>
