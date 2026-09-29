@@ -45,7 +45,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         cleanupIfTooBig();
-        String key = rule.name() + ":" + clientIp(request);
+        String key = rule.name() + ":" + ClientIp.of(request);
         TokenBucket bucket = buckets.computeIfAbsent(key, k -> new TokenBucket(rule.capacity(), rule.period()));
 
         long waitNanos = bucket.tryConsume();
@@ -72,15 +72,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (uri.startsWith("/api/"))
             return API;
         return null;
-    }
-
-    // Render jaise server ke peeche asli IP "X-Forwarded-For" header mein aati hai
-    private static String clientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 
     private void cleanupIfTooBig() {

@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 
 import com.ajitabh.algoquest.model.LoginEvent;
 import com.ajitabh.algoquest.repository.LoginEventRepository;
+import com.ajitabh.algoquest.security.ClientIp;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -34,7 +35,7 @@ public class LoginAuditService {
         e.setProvider(provider);
         e.setIdentity(cut(identity, 120));
         e.setSuccess(success);
-        e.setIpAddress(cut(clientIp(request), 64));
+        e.setIpAddress(cut(ClientIp.of(request), 64));
         e.setUserAgent(cut(userAgent, 300));
         e.setDevice(device);
         LoginEvent saved = events.save(e);
@@ -45,15 +46,6 @@ public class LoginAuditService {
             alerts.deniedAttempt(saved);
         }
         return saved;
-    }
-
-    // Render jaise server ke peeche asli IP "X-Forwarded-For" header mein aati hai
-    private String clientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 
     // Lamba User-Agent -> "Chrome on Windows" jaisa chhota naam
