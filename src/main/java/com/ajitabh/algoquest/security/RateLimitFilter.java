@@ -17,9 +17,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 // Har IP ke liye ek "token bucket": limit se zyada requests -> 429 Too Many Requests.
-// Yeh Spring Security se bhi PEHLE chalta hai, taaki spam jaldi ruk jaye.
+// CORS filter ke theek BAAD aur Spring Security se PEHLE chalta hai.
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE)
+@Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private record Rule(String name, int capacity, Duration period) {

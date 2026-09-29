@@ -30,6 +30,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 // GET  /api/sync                               : cloud wala data lo
+// GET  /api/sync/meta                          : sirf revision (halka check)
 // PUT  /api/sync                               : naya data save karo  { "baseRevision": 5, "data": {...} }
 // GET  /api/sync/snapshots                     : last 10 purane versions
 // POST /api/sync/snapshots/{revision}/restore  : purana version wapas lao  { "baseRevision": 5 }
@@ -45,6 +46,9 @@ public class SyncController {
 
     public record SyncResponse(long revision, Instant updatedAt, String updatedDevice,
             int sizeBytes, JsonNode data) {
+    }
+
+    public record SyncMeta(long revision, Instant updatedAt, String updatedDevice, int sizeBytes) {
     }
 
     public record SnapshotItem(long revision, int sizeBytes, String device, Instant savedAt) {
@@ -64,6 +68,13 @@ public class SyncController {
                 .map(s -> new SyncResponse(s.getRevision(), s.getUpdatedAt(), s.getUpdatedDevice(),
                         s.getSizeBytes(), json.readTree(s.getData())))
                 .orElse(new SyncResponse(0, null, null, 0, null)); // cloud abhi khali hai
+    }
+
+    @GetMapping("/meta")
+    public SyncMeta meta(@AuthenticationPrincipal Jwt jwt) {
+        return sync.meta(userId(jwt))
+                .map(m -> new SyncMeta(m.getRevision(), m.getUpdatedAt(), m.getUpdatedDevice(), m.getSizeBytes()))
+                .orElse(new SyncMeta(0, null, null, 0)); // cloud abhi khali hai
     }
 
     @PutMapping

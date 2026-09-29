@@ -14,6 +14,7 @@ import com.ajitabh.algoquest.model.UserState;
 import com.ajitabh.algoquest.repository.StateSnapshotRepository;
 import com.ajitabh.algoquest.repository.StateSnapshotRepository.SnapshotSummary;
 import com.ajitabh.algoquest.repository.UserStateRepository;
+import com.ajitabh.algoquest.repository.UserStateRepository.StateMeta;
 
 import tools.jackson.databind.JsonNode;
 
@@ -67,6 +68,13 @@ public class SyncService {
     @Transactional(readOnly = true)
     public Optional<UserState> load(Long userId) {
         return states.findById(userId);
+    }
+
+    // Halka check: sirf revision wagairah (website "kuch naya hai kya?" poochti
+    // hai)
+    @Transactional(readOnly = true)
+    public Optional<StateMeta> meta(Long userId) {
+        return states.findMetaByUserId(userId);
     }
 
     // Website se aaya naya data: pehle check, phir save

@@ -2,52 +2,63 @@ package com.ajitabh.algoquest.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
-import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
-// Poore backend ke security rules yahan hain
+// Do alag rulebooks (filter chains):
+// 1) API chain  (/api/**): sirf JWT token, koi session nahi (STATELESS)
+// 2) Web chain  (baaki sab): GitHub/Google login, jise login ke beech session chahiye
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Bean
-    SecurityFilterChain filterChain(HttpSecurity http,
-            GithubUserService githubUsers,
-            GoogleUserService googleUsers,
-            LoginSuccessHandler loginSuccessHandler,
-            LoginFailureHandler loginFailureHandler) throws Exception {
-        http
-                // 1. Kaunse URLs bina login khule hain
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/hello", // test API
-                                "/actuator/health", // Render health check
-                                "/api/auth/denied", // "tum owner nahi ho" wala message
-                                "/error")
-                        .permitAll()
-                        .anyRequest().authenticated())
-                // 2. GitHub / Google login (sirf pass lene ke liye)
-                .oauth2Login(oauth -> oauth
-                        .userInfoEndpoint(info -> info
-                                .userService(githubUsers)
-                                .oidcUserService(googleUsers))
-                        .successHandler(loginSuccessHandler) // login ho gaya -> history -> JWT pass -> website
-                        .failureHandler(loginFailureHandler) // fail -> history mein likho -> "private planner"
-                )
-                // 3. API requests "Authorization: Bearer <JWT>" se pehchani jaati hain
-                .oauth2ResourceServer(rs -> rs.jwt(Customizer.withDefaults()))
-                // 4. /api/** pe bina pass aaye toh login page nahi, seedha 401
-                .exceptionHandling(ex -> ex.defaultAuthenticationEntryPointFor(
-                        new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
-                        PathPatternRequestMatcher.withDefaults().matcher("/api/**")))
-                // 5. Bearer token wali APIs pe CSRF ki zaroorat nahi
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"));
+        // ---------- 1) API: website yahan JWT ke saath aati hai ----------
+        @Bean
+        @Order(1)
+        SecurityFilterChain apiChain(HttpSecurity http) throws Exception {
+                http
+                                .securityMatcher("/api/**")
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers("/api/hello", "/api/auth/denied").permitAll()
+                                                .anyRequest().authenticated())
+                                // Token galat/missing -> 401 (WWW-Authenticate: Bearer header ke saath)
+                                .oauth2ResourceServer(rs -> rs.jwt(Customizer.withDefaults()))
+                                // API kabhi session nahi banayegi: har request apna token khud laati hai
+                                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .requestCache(cache -> cache.disable())
+                                // CSRF cookies ke bharose hota hai; hum header wala token use karte hain, toh
+                                // zaroorat nahi
+                                .csrf(csrf -> csrf.disable());
 
-        return http.build();
-    }
+                return http.build();
+        }
+
+        // ---------- 2) Web: GitHub/Google login pages aur health check ----------
+        @Bean
+        @Order(2)
+        SecurityFilterChain webChain(HttpSecurity http,
+                        GithubUserService githubUsers,
+                        GoogleUserService googleUsers,
+                        LoginSuccessHandler loginSuccessHandler,
+                        LoginFailureHandler loginFailureHandler) throws Exception {
+                http
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers("/actuator/health", "/error").permitAll()
+                                                .anyRequest().authenticated())
+                                .oauth2Login(oauth -> oauth
+                                                .userInfoEndpoint(info -> info
+                                                                .userService(githubUsers)
+                                                                .oidcUserService(googleUsers))
+                                                .successHandler(loginSuccessHandler)
+                                                .failureHandler(loginFailureHandler))
+                                // Login ke baad hum khud website pe bhejte hain, "purani request yaad rakho"
+                                // nahi chahiye
+                                .requestCache(cache -> cache.disable());
+
+                return http.build();
+        }
 }
