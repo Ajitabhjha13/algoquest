@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import com.ajitabh.algoquest.service.OwnerAccountService;
 import com.ajitabh.algoquest.service.OwnerAccountService.NotOwnerException;
 
-// Google se login hone ke BAAD yeh chalta hai (Google "OpenID Connect" use karta hai, isliye Oidc)
+// Google se login hone ke BAAD (Google "OpenID Connect" use karta hai, isliye Oidc)
 @Component
 public class GoogleUserService extends OidcUserService {
 
@@ -22,11 +22,8 @@ public class GoogleUserService extends OidcUserService {
 
     @Override
     public OidcUser loadUser(OidcUserRequest request) throws OAuth2AuthenticationException {
-        // 1. Google se details lo (sub = Google ID, email, naam, photo)
         OidcUser google = super.loadUser(request);
-
         try {
-            // 2. Chaukidar: email owner ka ho aur verified ho
             ownerAccounts.loginWithGoogle(
                     google.getSubject(),
                     google.getEmail(),
@@ -34,8 +31,9 @@ public class GoogleUserService extends OidcUserService {
                     google.getFullName(),
                     google.getPicture());
         } catch (NotOwnerException e) {
-            // 3. Owner nahi hai: login yahin rok do
-            throw new OAuth2AuthenticationException(new OAuth2Error("not_owner", e.getMessage(), null), e.getMessage());
+            // description = sirf email (login history + alert mein yahi dikhega)
+            OAuth2Error error = new OAuth2Error("not_owner", google.getEmail(), null);
+            throw new OAuth2AuthenticationException(error, e.getMessage());
         }
         return google;
     }

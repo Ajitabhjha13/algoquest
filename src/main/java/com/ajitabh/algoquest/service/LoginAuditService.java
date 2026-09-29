@@ -7,19 +7,27 @@ import com.ajitabh.algoquest.repository.LoginEventRepository;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-// Har login attempt ko login_events table mein likhta hai
+// Har login attempt ko login_events table mein likhta hai, aur zaroorat ho toh alert bhejta hai
 @Service
 public class LoginAuditService {
 
     private final LoginEventRepository events;
+    private final SecurityAlertService alerts;
 
-    public LoginAuditService(LoginEventRepository events) {
+    public LoginAuditService(LoginEventRepository events, SecurityAlertService alerts) {
         this.events = events;
+        this.alerts = alerts;
     }
 
     public LoginEvent record(Long userId, String provider, String identity, boolean success,
             HttpServletRequest request) {
         String userAgent = request.getHeader("User-Agent");
+        String device = describeDevice(userAgent);
+
+        // Naya device? Yeh check SAVE se PEHLE hona chahiye,
+        // warna abhi wala login khud hi "purana device" gin liya jayega.
+        boolean newDevice = success && userId != null
+                && !events.existsByUserIdAndDeviceAndSuccessTrue(userId, device);
 
         LoginEvent e = new LoginEvent();
         e.setUserId(userId);
@@ -28,8 +36,15 @@ public class LoginAuditService {
         e.setSuccess(success);
         e.setIpAddress(cut(clientIp(request), 64));
         e.setUserAgent(cut(userAgent, 300));
-        e.setDevice(describeDevice(userAgent));
-        return events.save(e);
+        e.setDevice(device);
+        LoginEvent saved = events.save(e);
+
+        if (newDevice) {
+            alerts.newDeviceLogin(saved);
+        } else if (!success) {
+            alerts.deniedAttempt(saved);
+        }
+        return saved;
     }
 
     // Render jaise server ke peeche asli IP "X-Forwarded-For" header mein aati hai
@@ -52,7 +67,7 @@ public class LoginAuditService {
                                         : ua.contains("Safari/") ? "Safari"
                                                 : "Unknown browser";
         String os = ua.contains("Windows") ? "Windows"
-                : ua.contains("Android") ? "Android" // Android pehle, kyunki usme "Linux" bhi likha hota hai
+                : ua.contains("Android") ? "Android"
                         : (ua.contains("iPhone") || ua.contains("iPad")) ? "iOS"
                                 : ua.contains("Mac OS X") ? "macOS"
                                         : ua.contains("Linux") ? "Linux"
