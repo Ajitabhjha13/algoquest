@@ -82,8 +82,38 @@ const SettingsPage = {
       return;
     }
     if (action === "logout") {
+      // Pehle pending changes bhejne ki koshish (max 5 sec, server so raha ho toh intezaar nahi)
+      if (Sync.meta.dirty) {
+        btn.disabled = true;
+        await Promise.race([Sync.sync(), new Promise(r => setTimeout(r, 5000))]);
+        btn.disabled = false;
+      }
+      const dirty = Sync.meta.dirty;
+      const { action: choice, checks } = await Modal.open({
+        title: "Log out of AlgoQuest?",
+        html: `
+          ${dirty
+            ? `<p class="aq-modal-warn">⚠️ Some recent changes aren't backed up yet. They'll stay on this device and sync the next time you sign in.</p>`
+            : `<p>Your progress is safely backed up to the cloud.</p>`}
+          <label class="aq-modal-check ${dirty ? "disabled" : ""}">
+            <input type="checkbox" name="wipe" ${dirty ? "disabled" : ""}>
+            <span>Also remove my progress from this browser</span>
+          </label>
+          <p class="hint">${dirty
+            ? "Removing is turned off until your changes are backed up."
+            : "Recommended on a shared or public computer. Everything comes back when you sign in again."}</p>`,
+        actions: [
+          { label: "Cancel", value: null },
+          { label: "Log out", value: "logout", kind: "primary" },
+        ],
+      });
+      if (choice !== "logout") return;
+      const wipe = checks.wipe && !dirty;
+      if (wipe) Sync.forgetThisDevice(); // pehle data hatao, phir logout (login screen saaf dikhe)
       Auth.signOut();
-      showToast("Logged out on this device. Your data is still here.");
+      showToast(wipe
+        ? "Logged out and removed your progress from this browser."
+        : "Logged out. Your progress is still on this device.");
       return;
     }
     if (action === "logout-all") {
@@ -283,6 +313,16 @@ const SettingsPage = {
     document.getElementById("import-file").addEventListener("change", async e => {
       const file = e.target.files[0];
       if (!file) return;
+      if (Auth.isSignedIn() && !Store.isSandbox()) {
+        const { action } = await Modal.open({
+          title: "Restore this backup?",
+          html: `<p>Your current progress will be replaced by the backup, on this device and in the cloud.</p>
+                 <p class="hint">Your current version is kept in Cloud versions, so you can undo this.</p>`,
+          actions: [{ label: "Cancel", value: null }, { label: "Restore backup", value: "go", kind: "primary" }],
+        });
+        e.target.value = ""; // same file dobara chunne pe bhi "change" chale
+        if (action !== "go") return;
+      }
       try {
         Store.importData(await file.text());
         await renderRoute(); // naye data ke saath page dobara banao
@@ -299,7 +339,19 @@ const SettingsPage = {
     });
 
     document.getElementById("reset-btn").addEventListener("click", async () => {
-      if (!confirm("This will delete all your data. Are you sure?")) return;
+      const cloud = Auth.isSignedIn() && !Store.isSandbox();
+      const { action } = await Modal.open({
+        title: "Reset everything?",
+        html: cloud
+          ? `<p>This clears all your progress <b>on this device and in the cloud</b>. Your settings go back to the defaults.</p>
+             <p class="hint">The current version is kept in Cloud versions, so you can undo this.</p>`
+          : Store.isSandbox()
+            ? `<p>This clears your guest progress in this browser.</p>`
+            : `<p>This clears all your progress on this device.</p>
+               <p class="hint">You're not signed in, so the cloud copy is not touched. It will sync the next time you sign in.</p>`,
+        actions: [{ label: "Cancel", value: null }, { label: "Reset everything", value: "go", kind: "danger" }],
+      });
+      if (action !== "go") return;
       Store.reset();
       await renderRoute();
       this.toast("Everything reset");

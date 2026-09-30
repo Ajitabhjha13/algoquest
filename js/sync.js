@@ -62,6 +62,7 @@ const Sync = {
   },
 
   markDirty() {
+    if (Store.isSandbox()) return; // guest ka sandbox kabhi sync nahi hota
     this.saveSeq++;
     if (!this.meta.dirty) {
       this.meta.dirty = true;
@@ -80,7 +81,7 @@ const Sync = {
   // ---------- Asli kaam ----------
   async sync() {
     clearTimeout(this.debounceTimer);
-    if (!Auth.isSignedIn()) { this.setStatus("off"); return; }
+    if (!Auth.isSignedIn() || Store.isSandbox()) { this.setStatus("off"); return; }
     if (this.busy || this.status === "conflict" || this.status === "choice") return;
     if (!navigator.onLine) { this.pause("You're offline. Changes are saved on this device."); return; }
 
@@ -141,6 +142,90 @@ const Sync = {
     this.setStatus(kind, kind === "choice"
       ? "This device and the cloud both have progress."
       : "Your data changed on another device too.");
+    this.openChoice(); // user se poochho (popup)
+  },
+
+  // ---------- Conflict popup ----------
+  // Kisi state ka chhota hisaab (popup mein dono taraf dikhane ke liye)
+  summarize(s) {
+    const progress = s?.progress || {};
+    const done = Object.values(progress).filter(p => p?.status === "done").length;
+    const warm = Object.keys(s?.warmup?.done || {}).length;
+    const days = Object.keys(s?.log || {}).sort();
+    return { done, warm, lastActive: days[days.length - 1] || null };
+  },
+
+  fmtDay(ymd) {
+    const today = todayStr();
+    if (ymd === today) return "today";
+    const d = new Date(ymd + "T00:00:00");
+    return "on " + d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  },
+
+  ago(iso) {
+    if (!iso) return "some time ago";
+    const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins} min ago`;
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return `${hrs} hour${hrs > 1 ? "s" : ""} ago`;
+    const days = Math.round(hrs / 24);
+    return `${days} day${days > 1 ? "s" : ""} ago`;
+  },
+
+  choiceOpen: false,
+
+  async openChoice() {
+    if (this.choiceOpen || !(this.status === "conflict" || this.status === "choice")) return;
+    this.choiceOpen = true;
+    try {
+      if (!this.cloudCopy) this.cloudCopy = await Api.get("/api/sync");
+      const c = this.cloudCopy;
+      const me = this.summarize(Store.state);
+      const cloud = this.summarize(c.data);
+      const score = x => x.done + x.warm;
+      const better = score(me) === score(cloud) ? null : score(me) > score(cloud) ? "local" : "cloud";
+      const side = (title, x, extra, best) => `
+        <div class="sync-side ${best ? "best" : ""}">
+          ${best ? `<em>More progress</em>` : ""}
+          <b>${title}</b>
+          <span><strong>${x.done}</strong> tasks done</span>
+          <span><strong>${x.warm}</strong> warm-ups done</span>
+          <small>${extra}</small>
+        </div>`;
+      const localExtra = me.lastActive ? `Last active ${this.fmtDay(me.lastActive)}` : "No activity yet";
+      const cloudExtra = `Updated ${this.ago(c.updatedAt)}${c.updatedDevice ? ` on ${esc(c.updatedDevice)}` : ""}`;
+      const isChoice = this.status === "choice";
+
+      const { action } = await Modal.open({
+        title: isChoice ? "Which progress do you want to keep?" : "Your progress changed on another device",
+        html: `
+          <p>${isChoice
+            ? "This device and the cloud both have progress. Pick the one to continue with."
+            : "You made changes here and on another device. Pick the version to continue with."}</p>
+          <div class="sync-compare">
+            ${side("This device", me, localExtra, better === "local")}
+            ${side("Cloud", cloud, cloudExtra, better === "cloud")}
+          </div>
+          <p class="hint">Nothing is deleted. The version you don't pick is saved as a backup.</p>`,
+        actions: [
+          { label: "Decide later", value: null },
+          { label: "Keep this device", value: "local", kind: better === "local" ? "primary" : "" },
+          { label: "Use cloud", value: "cloud", kind: better === "local" ? "" : "primary" },
+        ],
+      });
+
+      if (action === "local") {
+        await this.keepThisDevice();
+        if (this.status === "synced") showToast("Kept this device's progress. The cloud copy is saved in Cloud versions.");
+      } else if (action === "cloud") {
+        await this.useCloud();
+      }
+    } catch (err) {
+      this.handleError(err);
+    } finally {
+      this.choiceOpen = false;
+    }
   },
 
   // ---------- Faisla (popup ke buttons yahi chalayenge) ----------
@@ -207,7 +292,7 @@ const Sync = {
   applyData(data) {
     this.applying = true;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(Store.MAIN_KEY, JSON.stringify(data));
       Store.load(); // defaults ke saath merge (naye fields bhi mil jayein)
     } finally {
       this.applying = false;
@@ -246,6 +331,20 @@ const Sync = {
     }
   },
 
+  // "Also remove my progress from this browser" (shared computer): is browser se owner ka
+  // data aur sync diary hata do. Cloud mein sab safe hai, agli baar sign in pe wapas aa jayega.
+  forgetThisDevice() {
+    clearTimeout(this.debounceTimer);
+    clearTimeout(this.retryTimer);
+    ["dsaPlanner.safety", "dsaPlanner.lastProvider", "dsaPlanner.offline", this.META_KEY]
+      .forEach(k => localStorage.removeItem(k));
+    localStorage.removeItem(Store.MAIN_KEY);
+    this.meta = { revision: 0, dirty: false, lastSyncedAt: null };
+    this.applying = true;
+    try { Store.load(); } finally { this.applying = false; } // khali default data
+    this.setStatus("off");
+  },
+
   // Test/debug ke liye: console mein Sync.info()
   info() {
     return {
@@ -272,7 +371,7 @@ const Sync = {
     // Doosri tab ne data ya diary badli toh is tab ki memory bhi taaza karo (warna purana data bhej dega).
     window.addEventListener("storage", e => {
       if (e.key === this.META_KEY) this.loadMeta();
-      if (e.key === STORAGE_KEY && e.newValue) {
+      if (e.key === Store.key() && e.newValue) {
         this.applying = true;
         try { Store.load(); } finally { this.applying = false; }
         if (typeof renderRoute === "function") renderRoute();

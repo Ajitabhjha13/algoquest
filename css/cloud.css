@@ -147,6 +147,17 @@ body.login-open { overflow: hidden; }
   background: rgba(46, 230, 166, 0.07); border: 1px solid rgba(46, 230, 166, 0.22); color: #c9f5e6;
 }
 
+/* Login fail ka message (jaise "private planner") */
+.login-error {
+  margin: -6px 0 18px; padding: 11px 13px; border-radius: 12px; font-size: 13px; line-height: 1.55;
+  background: rgba(255, 107, 107, 0.08); border: 1px solid rgba(255, 107, 107, 0.35); color: #ffd6d6;
+}
+.login-error b { color: #fff; }
+.login-error button {
+  font: inherit; font-weight: 700; color: #34f5b5; background: none; border: 0;
+  padding: 0; cursor: pointer; text-decoration: underline;
+}
+
 /* ---------- GitHub / Google buttons ---------- */
 .login-buttons { display: flex; flex-direction: column; gap: 12px; }
 .login-btn {
@@ -190,6 +201,12 @@ body.login-open { overflow: hidden; }
   font: inherit; font-weight: 700; color: #34f5b5; background: none; border: 0;
   padding: 0; cursor: pointer; text-decoration: underline;
 }
+/* "Try again · Continue offline": dono ek hi line mein, message ke neeche */
+.login-status-actions {
+  display: flex; justify-content: center; align-items: center; gap: 10px;
+  margin-top: 8px; white-space: nowrap;
+}
+.login-status-actions span { color: rgba(238, 246, 243, 0.35); }
 @keyframes login-pulse { 50% { opacity: 0.35; } }
 
 .login-private {
@@ -289,3 +306,77 @@ body.public-view #public-bar { order: -1; }
 /* Settings ka Guest card */
 .guest-card { border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); }
 .guest-owner { margin-top: 10px; font-size: 12.5px; }
+
+/* Offline mode box (sidebar): halka neela */
+.side-status.offline {
+  background: rgba(93, 139, 255, 0.08);
+  border-color: rgba(93, 139, 255, 0.45);
+}
+
+/* =========================================================
+   MODAL (popup): Log out, conflict wagairah
+   ========================================================= */
+.aq-modal {
+  position: fixed; inset: 0; z-index: 70;
+  display: grid; place-items: center; padding: 20px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  animation: aq-fade 0.15s ease both;
+}
+.aq-modal-box {
+  width: min(460px, 100%);
+  padding: 24px 24px 20px; border-radius: 16px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--line);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.45);
+  animation: aq-pop 0.2s ease both;
+}
+.aq-modal-box h2 { font-size: 19px; font-weight: 800; margin: 0 0 10px; letter-spacing: -0.01em; }
+.aq-modal-body p { margin: 0 0 12px; line-height: 1.55; font-size: 14px; }
+.aq-modal-body .hint { font-size: 12.5px; margin-top: 6px; }
+.aq-modal-warn {
+  padding: 10px 12px; border-radius: 10px;
+  background: rgba(244, 183, 64, 0.1); border: 1px solid rgba(244, 183, 64, 0.4);
+}
+.aq-modal-check {
+  display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+  padding: 10px 12px; border-radius: 10px; font-size: 14px;
+  border: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 40%, var(--surface));
+}
+.aq-modal-check input { margin-top: 3px; accent-color: var(--accent); width: 16px; height: 16px; flex: none; }
+.aq-modal-check.disabled { opacity: 0.5; cursor: not-allowed; }
+.aq-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+@keyframes aq-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes aq-pop { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+@media (max-width: 520px) {
+  .aq-modal-actions .btn { flex: 1 1 100%; justify-content: center; }
+}
+
+/* Sync paused box (sidebar): amber */
+.side-status.conflict {
+  background: rgba(244, 183, 64, 0.08);
+  border-color: rgba(244, 183, 64, 0.5);
+}
+.side-status.conflict button { color: #2a1a00; background: #f4b740; border-color: #f4b740; }
+
+/* Conflict popup: dono taraf ka hisaab */
+.aq-modal-box:has(.sync-compare) { width: min(540px, 100%); }
+.sync-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 4px 0 12px; }
+.sync-side {
+  position: relative;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 14px; border-radius: 12px; font-size: 13.5px;
+  border: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 40%, var(--surface));
+}
+.sync-side b { font-size: 15px; margin-bottom: 4px; }
+.sync-side strong { font-size: 16px; }
+.sync-side small { color: var(--muted); margin-top: 6px; line-height: 1.4; }
+.sync-side.best { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); }
+.sync-side em {
+  position: absolute; top: -9px; right: 10px;
+  font-style: normal; font-size: 10.5px; font-weight: 800;
+  padding: 2px 8px; border-radius: 999px; color: #04221a; background: var(--accent);
+}
+@media (max-width: 520px) {
+  .sync-compare { grid-template-columns: 1fr; }
+}

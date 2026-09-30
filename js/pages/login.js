@@ -4,9 +4,23 @@
 // About page sabke liye khula hai (recruiters ke liye).
 // =========================================================
 
-// Guest mode: bina login ke website ghoomna (data sirf isi browser mein)
+// Guest mode: bina login ke website ghoomna, ek ALAG sandbox dabbe mein.
+// Owner ka asli data na dikhta hai, na badalta hai, aur guest ka data kabhi sync nahi hota.
 const Guest = {
-  KEY: "dsaPlanner.guest",
+  KEY: GUEST_FLAG_KEY,
+  active() { return localStorage.getItem(this.KEY) === "1"; },
+  start() { localStorage.setItem(this.KEY, "1"); Store.load(); }, // sandbox dabba kholo
+  stop() {
+    if (!this.active()) return;
+    localStorage.removeItem(this.KEY);
+    Store.load(); // owner ka asli dabba wapas
+  },
+};
+
+// Offline mode: server down tha toh owner ne "continue offline" dabaya.
+// Yeh OWNER ka hi data hai: changes yaad rehte hain aur sign in ke baad sync ho jaate hain.
+const Offline = {
+  KEY: "dsaPlanner.offline",
   active() { return localStorage.getItem(this.KEY) === "1"; },
   start() { localStorage.setItem(this.KEY, "1"); },
   stop() { localStorage.removeItem(this.KEY); },
@@ -27,11 +41,34 @@ const LOGIN_QUOTES = [
 const LoginScreen = {
   el: null,
   serverState: "idle", // idle | waking | ready | down
+  error: null,         // login fail hua toh backend ne kya bataya: not_owner | cancelled | failed
+
+  // Backend login fail hone pe "#/login?error=..." pe bhejta hai. Code uthao aur URL saaf karo.
+  readError() {
+    if (!location.hash.startsWith("#/login?")) return;
+    const code = new URLSearchParams(location.hash.split("?")[1]).get("error");
+    history.replaceState(null, "", location.pathname + location.search + "#/login");
+    if (!["not_owner", "cancelled", "failed"].includes(code)) return;
+    this.error = code;
+    // Owner nahi tha: is browser ko "welcome back / last used" mat dikhao
+    if (code === "not_owner") localStorage.removeItem(Auth.LAST_PROVIDER_KEY);
+  },
+
+  errorHtml() {
+    const msg = {
+      not_owner: `<b>This is a private planner.</b> Only its owner can sign in, but you're welcome to
+                  <button type="button" data-login="guest">explore as a guest</button>.`,
+      cancelled: `Sign-in was cancelled. You can try again anytime.`,
+      failed: `Sign-in didn't work this time. Please try again.`,
+    }[this.error];
+    this.error = null; // ek hi baar dikhao
+    return msg ? `<p class="login-error" role="alert">${msg}</p>` : "";
+  },
 
   // Kya login screen dikhani hai?
   shouldShow(pageName) {
-    if (Auth.isSignedIn()) { Guest.stop(); return false; } // login ho gaya: guest mode khatam
-    if (Guest.active()) return false;
+    if (Auth.isSignedIn()) { Guest.stop(); Offline.stop(); return false; } // login ho gaya: guest/offline khatam
+    if (Guest.active() || Offline.active()) return false;
     return pageName !== "about"; // About sabke liye khula
   },
 
@@ -52,7 +89,8 @@ const LoginScreen = {
   html() {
     const quote = LOGIN_QUOTES[Math.floor(Math.random() * LOGIN_QUOTES.length)];
     // Pehle kabhi login kiya tha? Toh "welcome back" wala chhota note
-    const returning = !!Auth.lastProvider();
+    const errorBox = this.errorHtml();
+    const returning = !errorBox && !!Auth.lastProvider();
     const last = Auth.lastProvider();
     // "Last used" wala button upar aur hara (primary)
     const githubFirst = last !== "google";
@@ -84,6 +122,7 @@ const LoginScreen = {
           <h2 class="login-hello">${this.greeting()}, Ajitabh 👋</h2>
           <p class="login-line">From arrays to offer letters, your streak is waiting.</p>
 
+          ${errorBox}
           ${returning ? `<p class="login-note">Welcome back! Sign in to continue. Your progress on this device is safe and will sync after you sign in.</p>` : ""}
 
           <div class="login-buttons">
@@ -150,8 +189,13 @@ const LoginScreen = {
       b.disabled = true;
       Auth.signIn(action);
     } else if (action === "guest") {
+      Offline.stop();
       Guest.start();
       location.hash = "#/dashboard"; // naya history entry: browser ka Back wapas login pe laayega
+    } else if (action === "offline") {
+      Guest.stop();
+      Offline.start();
+      location.hash = "#/dashboard";
     } else if (action === "retry") {
       this.serverState = "idle";
       this.wakeServer();
@@ -187,8 +231,11 @@ const LoginScreen = {
       s.innerHTML = `<i></i>Server is ready`;
     } else if (this.serverState === "down") {
       s.innerHTML = `<i></i>The server is not reachable right now.
-        <button type="button" data-login="retry">Try again</button> or
-        <button type="button" data-login="guest">continue offline</button>`;
+        <span class="login-status-actions">
+          <button type="button" data-login="retry">Try again</button>
+          <span aria-hidden="true">·</span>
+          <button type="button" data-login="offline">Continue offline</button>
+        </span>`;
     } else {
       s.innerHTML = "";
     }
@@ -205,8 +252,12 @@ const Notices = {
   // Abhi kaunsa notice dikhana hai? (null = kuch nahi)
   current() {
     if (!Auth.isSignedIn()) {
-      return Guest.active() ? { type: "guest" } : null;
+      if (Guest.active()) return { type: "guest" };
+      if (Offline.active()) return { type: "offline" };
+      return null;
     }
+    // Sync ruka hai: dono jagah alag progress, user ko chunna hai
+    if (Sync.status === "conflict" || Sync.status === "choice") return { type: "conflict" };
     // Normal renew chal raha ho toh warning mat dikhao; sirf tab jab renew na ho paaye
     const failedRenew = Auth.expiringSoon() && Auth.lastRenewTry > 0 && !Auth.renewing;
     if (Auth.reauthRequired || failedRenew) {
@@ -247,6 +298,14 @@ const Notices = {
       ? `<b>👀 Guest mode</b>
          <span>Saved in this browser only.</span>
          <button type="button" data-notice="exit">Exit guest mode</button>`
+      : n.type === "conflict"
+      ? `<b>⚖️ Sync paused</b>
+         <span>Choose which progress to keep.</span>
+         <button type="button" data-notice="review">Review</button>`
+      : n.type === "offline"
+      ? `<b>📴 Offline mode</b>
+         <span>Syncs after you sign in.</span>
+         <button type="button" data-notice="signin">Sign in</button>`
       : `<button type="button" class="side-status-x" data-notice="hide" aria-label="Hide for today">×</button>
          <b>🔐 Sign-in expires in ${n.days} day${n.days > 1 ? "s" : ""}</b>
          <span>Renew it so your progress keeps syncing.</span>
@@ -259,6 +318,8 @@ const Notices = {
     const action = b.dataset.notice;
     if (action === "signin") {
       location.hash = "#/login";
+    } else if (action === "review") {
+      Sync.openChoice();
     } else if (action === "exit") {
       Guest.stop();
       location.hash = "#/login";
@@ -274,8 +335,12 @@ const Notices = {
   },
 };
 
-// Login ki halat badle ya tab pe wapas aao: notice dobara socho
+// Login ki halat ya sync ki halat badle, ya tab pe wapas aao: notice dobara socho
 window.addEventListener("algoquest:auth-changed", () => Notices.render());
+window.addEventListener("algoquest:sync", () => Notices.render());
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") Notices.render();
 });
+
+// Router chalne se PEHLE login error padh lo (URL saaf ho jaye)
+LoginScreen.readError();

@@ -67,6 +67,7 @@ async function renderRoute() {
   if (currentPage?.cleanup) currentPage.cleanup();
 
   // "#/problems" -> "problems", "#/plan/main" -> "plan/main"
+  LoginScreen.readError(); // "#/login?error=..." ho toh code uthao aur URL saaf karo
   let pageName = location.hash.replace("#/", "") || "dashboard";
   if (pageName === "plan") pageName = "plan/warmup"; // purane "#/plan" links ke liye
   if (pageName === "videos") pageName = "lectures";   // purana naam

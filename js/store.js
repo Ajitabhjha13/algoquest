@@ -2,9 +2,11 @@
 // STORE
 // Saara user data browser ke localStorage mein save hota hai.
 // Ek hi key ("dsaPlanner") ke andar poora object JSON ban ke jaata hai.
-// Phase 2 mein yahi data Spring Boot backend pe shift hoga.
+// Login ho toh sync.js yahi data cloud pe bhi rakhta hai (backup + doosre devices).
 // =========================================================
-const STORAGE_KEY = "dsaPlanner";
+const STORAGE_KEY = "dsaPlanner";                 // owner ka asli data (yahi cloud pe sync hota hai)
+const GUEST_STORAGE_KEY = "dsaPlanner.guestData"; // "Explore as guest" ka alag dabba (kabhi sync nahi)
+const GUEST_FLAG_KEY = "dsaPlanner.guest";        // "1" = guest mode chalu
 
 // Local date "YYYY-MM-DD" (toISOString UTC deta hai, jo India mein subah galat date de sakta hai)
 function todayStr() {
@@ -46,6 +48,16 @@ const DEFAULT_STATE = {
 
 const Store = {
   state: null,
+  MAIN_KEY: STORAGE_KEY,
+  GUEST_KEY: GUEST_STORAGE_KEY,
+
+  // Abhi kaunsa dabba? Guest mode mein alag sandbox, taaki guest owner ka data na dekhe/badle
+  key() {
+    return localStorage.getItem(GUEST_FLAG_KEY) === "1" ? GUEST_STORAGE_KEY : STORAGE_KEY;
+  },
+  isSandbox() {
+    return this.key() === GUEST_STORAGE_KEY;
+  },
 
   // ---------------- FRESH START ----------------
   // Asli practice 27 September 2026 se shuru. Testing ka saara data ek baar saaf,
@@ -68,7 +80,7 @@ const Store = {
 
   load() {
     try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      const saved = JSON.parse(localStorage.getItem(this.key()));
       // Default ke upar saved data merge karo, taaki naye fields bhi mil jayein
       this.state = saved
         ? { ...DEFAULT_STATE, ...saved, settings: { ...DEFAULT_STATE.settings, ...saved.settings }, progress: saved.progress || {}, warmup: { ...DEFAULT_STATE.warmup, ...saved.warmup }, log: saved.log || {}, review: saved.review || {}, notes: saved.notes || {}, videos: saved.videos || null }
@@ -81,7 +93,7 @@ const Store = {
   },
 
   save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+    localStorage.setItem(this.key(), JSON.stringify(this.state));
   },
 
   get settings() {
@@ -117,7 +129,7 @@ const Store = {
   },
 
   reset() {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(this.key());
     this.load();
   },
 };
