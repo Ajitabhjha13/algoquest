@@ -71,6 +71,31 @@ async function renderRoute() {
   if (pageName === "plan") pageName = "plan/warmup"; // purane "#/plan" links ke liye
   if (pageName === "videos") pageName = "lectures";   // purana naam
 
+  // LOGIN SCREEN ka apna address "#/login" hai, taaki browser ka Back button sahi chale
+  if (pageName === "login") {
+    if (Auth.isSignedIn()) {
+      pageName = "dashboard"; // login ho chuka hai: login screen ki zaroorat nahi
+      history.replaceState(null, "", "#/dashboard");
+    } else {
+      LoginScreen.setPublicView(false);
+      LoginScreen.show();
+      Notices.render();
+      return;
+    }
+  }
+  // Sign in nahi hai (aur guest bhi nahi) toh pehle login screen
+  if (LoginScreen.shouldShow(pageName)) {
+    history.replaceState(null, "", "#/login");
+    LoginScreen.setPublicView(false);
+    LoginScreen.show();
+    Notices.render();
+    return;
+  }
+  LoginScreen.hide();
+  // Bina login/guest ke About: poori screen, sidebar nahi
+  LoginScreen.setPublicView(!Auth.isSignedIn() && !Guest.active() && pageName === "about");
+  Notices.render();
+
   // FOCUS MODE: contest chal raha hai toh sirf contest page
   Contest.checkTimeout();
   const inContest = !!Contest.active;
@@ -131,6 +156,12 @@ document.addEventListener("click", e => {
     e.preventDefault();
     group.classList.toggle("open");
   }
+});
+
+// Logout hua (khud, token expire, ya "log out everywhere") toh page dobara socho:
+// login screen dikhani hai ya nahi
+window.addEventListener("algoquest:auth-changed", e => {
+  if (["manual", "expired", "everywhere"].includes(e.detail?.reason)) renderRoute();
 });
 
 // Jab bhi URL ka # badle, ya page pehli baar khule

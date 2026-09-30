@@ -1,0 +1,291 @@
+/* =========================================================
+   CLOUD: Account & Sync card, naya logo, aur Login screen
+   Alag file taaki badi style.css chhedni na pade
+   ========================================================= */
+
+/* ---------- Naya logo (sidebar): dark tile, taaki light mode mein bhi dikhe ---------- */
+.brand-mark.logo-tile {
+  display: grid; place-items: center; overflow: hidden;
+  background: #0c1417;
+  border: 1px solid color-mix(in srgb, #2ee6a6 55%, transparent);
+}
+.brand-mark.logo-tile img { width: 80%; height: 80%; object-fit: contain; display: block; }
+
+/* ---------- Account & Sync card (Settings) ---------- */
+.account-card .btn { display: inline-flex; align-items: center; gap: 8px; }
+.account-card .btn svg { width: 18px; height: 18px; flex: none; }
+.account-card .btn:disabled { opacity: 0.6; cursor: wait; }
+
+.acct-row { display: flex; align-items: center; gap: 14px; margin: 8px 0 12px; }
+.acct-avatar {
+  width: 52px; height: 52px; border-radius: 50%; object-fit: cover; flex: none;
+  border: 2px solid var(--line-strong, var(--line));
+}
+.acct-avatar.fallback {
+  display: grid; place-items: center; font-size: 20px; font-weight: 800;
+  color: var(--accent); background: var(--accent-soft, var(--surface));
+}
+.acct-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.acct-info b { font-size: 16px; }
+.acct-email {
+  color: var(--muted); font-size: 13px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.acct-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.acct-chip {
+  font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--muted);
+}
+.acct-chip.on {
+  color: var(--accent); background: var(--accent-soft, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+.acct-note { margin-bottom: 14px; }
+
+@media (max-width: 520px) {
+  .account-card .btn-row .btn { flex: 1 1 100%; justify-content: center; }
+}
+
+/* =========================================================
+   LOGIN SCREEN
+   Poori screen pe, website ke upar. Hamesha dark look (image dark hai).
+   ========================================================= */
+body.login-open { overflow: hidden; }
+
+#login-screen {
+  position: fixed; inset: 0; z-index: 55;
+  display: flex; flex-direction: column;
+  color: #eef6f3;
+  background: #060b0d; /* image load na ho toh bhi sundar dark */
+  overflow-y: auto;
+}
+#login-screen[hidden] { display: none; }
+
+/* Background: image + halka blur (image chhoti hai) + kinaaron pe andhera (vignette),
+   taaki nazar beech ke card pe jaaye aur image ke words card se muqabla na karein */
+.login-bg {
+  position: fixed; inset: 0; z-index: -1;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 50%, rgba(46, 230, 166, 0.07), transparent 70%),
+    radial-gradient(ellipse 120% 90% at 50% 45%, transparent 35%, rgba(3, 6, 8, 0.78) 100%),
+    linear-gradient(180deg, rgba(4, 8, 10, 0.50) 0%, rgba(4, 8, 10, 0.62) 55%, rgba(4, 8, 10, 0.85) 100%),
+    url("../assets/brand/login-bg.webp") center / cover no-repeat,
+    #060b0d;
+  filter: blur(2.5px) saturate(1.05);
+  transform: scale(1.04); /* blur ke kinare na dikhen */
+}
+
+/* ---------- Upar ki patti (login + public About dono mein same) ---------- */
+.login-top, #public-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 20px 32px;
+}
+.login-brand { display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; }
+.login-logo {
+  width: 42px; height: 42px; border-radius: 12px; flex: none;
+  display: grid; place-items: center;
+  background: rgba(12, 20, 23, 0.85);
+  border: 1px solid rgba(46, 230, 166, 0.5);
+  box-shadow: 0 0 18px rgba(46, 230, 166, 0.12);
+}
+.login-logo img { width: 80%; height: 80%; object-fit: contain; }
+.login-brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+.login-brand-text b { font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+.login-brand-text em, .login-card h1 em {
+  font-style: normal;
+  background: linear-gradient(90deg, #2ee6a6, #5eead4);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.login-brand-text small { font-size: 11px; font-weight: 600; color: rgba(238, 246, 243, 0.62); letter-spacing: 0.01em; }
+
+.login-links { display: flex; align-items: center; gap: 10px; }
+.login-link {
+  display: inline-flex; align-items: center; height: 40px;
+  font: inherit; font-size: 14px; font-weight: 700; color: #eef6f3; text-decoration: none;
+  padding: 0 16px; border-radius: 11px; cursor: pointer;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+}
+.login-link:hover { background: rgba(255, 255, 255, 0.11); border-color: rgba(46, 230, 166, 0.5); transform: translateY(-1px); }
+
+/* ---------- Beech ka glass card ---------- */
+.login-center { flex: 1; display: grid; place-items: center; padding: 16px 20px 8px; }
+.login-card {
+  position: relative;
+  width: min(460px, 100%);
+  padding: 34px 32px 24px;
+  text-align: center;
+  border-radius: 22px;
+  background: rgba(9, 15, 18, 0.52);              /* thoda sa transparent: background se blend */
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(18px) saturate(1.25);     /* peeche ki image dhundhli */
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.50);
+  animation: login-rise 0.5s ease both;
+}
+/* Card ke upar halki hari chamak (glass ka kinara) */
+.login-card::before {
+  content: ""; position: absolute; left: 24px; right: 24px; top: -1px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(46, 230, 166, 0.55), transparent);
+}
+@keyframes login-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+.login-card h1 { font-size: 34px; font-weight: 800; letter-spacing: -0.03em; margin: 0; line-height: 1.1; }
+.login-tag {
+  margin: 8px 0 24px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.2em;
+  text-transform: uppercase; color: rgba(238, 246, 243, 0.55);
+}
+.login-hello { font-size: 21px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.01em; }
+.login-line {
+  margin: 0 0 22px; font-size: 15px; line-height: 1.5; color: rgba(238, 246, 243, 0.75);
+  white-space: nowrap; /* ek hi line mein */
+}
+.login-note {
+  margin: -6px 0 18px; padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.5;
+  background: rgba(46, 230, 166, 0.07); border: 1px solid rgba(46, 230, 166, 0.22); color: #c9f5e6;
+}
+
+/* ---------- GitHub / Google buttons ---------- */
+.login-buttons { display: flex; flex-direction: column; gap: 12px; }
+.login-btn {
+  position: relative;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; height: 50px; padding: 0 16px; border-radius: 12px; cursor: pointer;
+  font: inherit; font-size: 15px; font-weight: 700; color: #eef6f3;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: transform 0.12s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.login-btn svg { width: 20px; height: 20px; flex: none; }
+.login-btn:hover { transform: translateY(-1px); background: rgba(255, 255, 255, 0.11); border-color: rgba(255, 255, 255, 0.22); }
+.login-btn.primary {
+  color: #04221a; border-color: transparent;
+  background: linear-gradient(90deg, #2ee6a6, #34f5b5);
+  box-shadow: 0 6px 20px rgba(46, 230, 166, 0.22);
+}
+.login-btn.primary:hover { background: linear-gradient(90deg, #34f5b5, #5eead4); box-shadow: 0 8px 26px rgba(46, 230, 166, 0.32); }
+.login-btn:focus-visible, .login-link:focus-visible { outline: 2px solid #5eead4; outline-offset: 3px; }
+.login-btn.loading { opacity: 0.7; cursor: wait; }
+.login-btn:disabled { cursor: wait; }
+.login-last {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  font-style: normal; font-size: 10.5px; font-weight: 800; letter-spacing: 0.02em;
+  padding: 3px 8px; border-radius: 999px;
+  background: rgba(4, 34, 26, 0.85); color: #34f5b5;
+}
+.login-btn:not(.primary) .login-last { background: rgba(46, 230, 166, 0.15); }
+
+/* ---------- Server ka haal ---------- */
+.login-status { min-height: 20px; margin: 16px 0 0; font-size: 12.5px; color: rgba(238, 246, 243, 0.62); }
+.login-status i {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  margin-right: 7px; vertical-align: 1px; background: #8e97ac;
+}
+.login-status.waking i { background: #f4b740; animation: login-pulse 1.2s infinite; }
+.login-status.ready i { background: #2ee6a6; box-shadow: 0 0 8px rgba(46, 230, 166, 0.7); }
+.login-status.down i { background: #ff6b6b; }
+.login-status button {
+  font: inherit; font-weight: 700; color: #34f5b5; background: none; border: 0;
+  padding: 0; cursor: pointer; text-decoration: underline;
+}
+@keyframes login-pulse { 50% { opacity: 0.35; } }
+
+.login-private {
+  margin: 18px 0 0; padding-top: 16px; font-size: 12.5px; line-height: 1.65;
+  color: rgba(238, 246, 243, 0.58);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ---------- Neeche quote ---------- */
+.login-quote {
+  text-align: center; padding: 14px 20px 26px;
+  font-size: 14px; font-style: italic; letter-spacing: 0.01em; color: rgba(238, 246, 243, 0.62);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-card { animation: none; }
+}
+
+/* ---------- Phone ---------- */
+@media (max-width: 600px) {
+  .login-top, #public-bar { padding: 14px 16px; }
+  .login-brand-text small { display: none; }
+  .login-links { gap: 6px; }
+  .login-link { height: 36px; padding: 0 12px; font-size: 13px; }
+  .login-card { padding: 28px 20px 20px; border-radius: 18px; }
+  .login-card h1 { font-size: 28px; }
+  .login-line { white-space: normal; } /* chhoti screen pe line tootna theek hai */
+  .login-private br { display: none; }
+}
+@media (max-width: 380px) {
+  .login-brand-text { display: none; }
+}
+
+/* =========================================================
+   PUBLIC VIEW: login screen se About khola (bina login)
+   Sidebar nahi, upar sirf logo + "Back to sign in"
+   ========================================================= */
+#public-bar {
+  position: sticky; top: 0; z-index: 30;
+  color: var(--text);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+#public-bar .login-brand-text small { color: var(--muted); }
+#public-bar .login-link { color: var(--text); background: var(--surface); border-color: var(--line); }
+body.public-view .sidebar { display: none; }
+body.public-view .main { margin: 0 auto; }
+body.public-view { display: flex; flex-direction: column; }
+body.public-view #public-bar { order: -1; }
+
+/* =========================================================
+   SIDEBAR STATUS: About ke theek upar chhota box
+   (Guest mode / sign-in expiring). Page ke content ke upar kabhi nahi aata.
+   ========================================================= */
+#sidebar-status[hidden] { display: none; }
+/* About ke theek upar, sidebar ke neeche wale hisse mein */
+#sidebar-status:not([hidden]) { margin-top: auto; }
+#sidebar-status:not([hidden]) + .about-link { margin-top: 0; }
+.side-status {
+  position: relative;
+  display: flex; flex-direction: column; gap: 4px;
+  margin: 0 4px 12px; padding: 12px 12px 12px 14px;
+  border-radius: 12px; font-size: 12.5px; line-height: 1.4;
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  animation: notice-in 0.3s ease both;
+}
+.side-status.expiry {
+  background: rgba(244, 183, 64, 0.08);
+  border-color: rgba(244, 183, 64, 0.45);
+}
+.side-status b { font-size: 13px; }
+.side-status span { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.side-status button {
+  margin-top: 6px; align-self: flex-start;
+  font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+  padding: 6px 12px; border-radius: 8px;
+  color: var(--text); background: transparent; border: 1px solid var(--line);
+  transition: border-color 0.15s, color 0.15s;
+}
+.side-status button:hover { border-color: var(--accent); color: var(--accent); }
+/* Guest box: button poori chaudai mein, box sudol (balanced) dikhe */
+.side-status.guest button { align-self: stretch; text-align: center; margin-top: 8px; }
+.side-status.expiry button:not(.side-status-x) { color: #2a1a00; background: #f4b740; border-color: #f4b740; }
+.side-status .side-status-x {
+  position: absolute; top: 6px; right: 8px; margin: 0;
+  padding: 0 6px; border: 0; font-size: 16px; line-height: 1; color: var(--muted);
+}
+@keyframes notice-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* Phone pe sidebar neeche ki patti hai: yeh box wahan nahi (Settings mein sab dikhta hai) */
+@media (max-width: 768px) {
+  #sidebar-status { display: none !important; }
+}
+
+/* Settings ka Guest card */
+.guest-card { border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); }
+.guest-owner { margin-top: 10px; font-size: 12.5px; }
