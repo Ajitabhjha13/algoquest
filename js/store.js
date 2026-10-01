@@ -60,9 +60,11 @@ const Store = {
   },
 
   // ---------------- FRESH START ----------------
-  // Asli practice 27 September 2026 se shuru. Testing ka saara data ek baar saaf,
+  // Asli practice 2 October 2026 se shuru. Testing ka saara data (ticks, logs, notes, streaks) ek baar saaf,
   // lekin settings (hours, target), profile, imported playlist aur saved contest designs bache rehte hain.
-  FRESH_START: "2026-09-27",
+  // Marker badalte hi har device pe yeh ek hi baar chalta hai, aur saaf data cloud pe bhi chala jata hai.
+  FRESH_START: "2026-10-02",
+  didFreshStart: false, // sync.js dekhta hai: abhi-abhi saaf hua toh cloud ko bhi saaf data bhejo
 
   freshStart() {
     const st = this.state;
@@ -76,6 +78,7 @@ const Store = {
     };
     this.state = { ...structuredClone(DEFAULT_STATE), ...keep, freshStart: this.FRESH_START };
     this.save();
+    this.didFreshStart = true;
   },
 
   load() {

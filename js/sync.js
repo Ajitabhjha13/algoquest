@@ -25,6 +25,7 @@ const Sync = {
   retryTimer: null,
   retryIndex: 0,
   cloudCopy: null,  // conflict/choice ke waqt cloud wala version (popup ke liye)
+  syncedJson: null, // aakhri baar cloud mein jo data tha (bekaar "dirty" pakadne ke liye)
 
   // ---------- Diary ----------
   loadMeta() {
@@ -63,6 +64,9 @@ const Sync = {
 
   markDirty() {
     if (Store.isSandbox()) return; // guest ka sandbox kabhi sync nahi hota
+    // Kai pages render hote waqt bhi save karte hain, bina kuch badle. Data cloud wale jaisa hi hai
+    // toh kuch mat karo: na faltu request, na "Syncing…" ki baar-baar jhalak.
+    if (!this.meta.dirty && this.syncedJson && JSON.stringify(Store.state) === this.syncedJson) return;
     this.saveSeq++;
     if (!this.meta.dirty) {
       this.meta.dirty = true;
@@ -303,6 +307,7 @@ const Sync = {
 
   done() {
     // "Last synced" = aakhri baar jab cloud se pakka hua ki sab barabar hai
+    if (!this.meta.dirty) this.syncedJson = JSON.stringify(Store.state); // cloud = yeh data
     this.meta.lastSyncedAt = Date.now();
     this.saveMeta();
     this.retryIndex = 0;
@@ -413,6 +418,9 @@ const Sync = {
   init() {
     this.loadMeta();
     this.hookStore();
+    // Fresh start abhi-abhi hua (purana testing data saaf)? Toh yeh saaf data cloud pe bhi bhejo,
+    // warna cloud mein purana data pada rehta aur doosre devices wahi le aate.
+    if (Store.didFreshStart) { Store.didFreshStart = false; this.markDirty(); }
 
     // Kab sync karein:
     window.addEventListener("DOMContentLoaded", () => this.sync());          // website khulte hi

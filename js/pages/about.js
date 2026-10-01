@@ -1,13 +1,10 @@
 // =========================================================
-// ABOUT: yeh website kisne, kab aur kyun banayi
+// ABOUT: yeh website kisne aur kyun banayi
 // Photo:     assets/ajitabh.jpg   (na ho toh Profile photo, warna initials)
 // Signature: assets/signature.png (na ho toh sundar handwriting font mein naam)
 // =========================================================
 const ABOUT = {
   name: "Ajitabh Kumar Jha",
-  started: "2026-09-25",
-  practice: "2026-09-27",
-  version: "2026-09-27",
 };
 
 const AboutPage = {
@@ -25,21 +22,23 @@ const AboutPage = {
       onerror="this.outerHTML='<span class=&quot;sig-text&quot;>${ABOUT.name}</span>'">`;
   },
 
-  longDate(d) {
-    return parseDate(d).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
-  },
-
   async render() {
-    const days = Math.max(1, daysBetween(parseDate(ABOUT.practice), parseDate(todayStr())) + 1);
     const features = [
       ["🧭", "A plan that knows your hours", "Every warm-up, problem and lecture is placed on a real calendar, and the plan re-shapes itself when a day is missed."],
       ["🎯", "Three tracks, one goal", "Warm-up for speed, Main Quest for depth, Lectures for concepts, all counted towards one finish date."],
       ["🏆", "Contests that feel real", "Timed topic, weekly, monthly, blind and custom contests, with focus mode and no peeking."],
       ["🧠", "Revision that sticks", "Review rounds, Problem of the Day, key points, hints and a flashcard-style Revision Mode."],
       ["📈", "Honest progress", "Streaks with freezes, activity heatmaps, mastery levels, weak areas and 30+ achievements."],
-      ["🔒", "Private by design", "Everything lives in your own browser. No account, no tracking, no ads."],
+      ["☁️", "Cloud sync that never loses data", "Works offline first, syncs in the background, settles conflicts safely and keeps the last 10 versions, so any change can be undone."],
+      ["🔐", "Secure, private sign-in", "GitHub or Google sign-in with no passwords stored, alerts for new devices and blocked attempts, and one-click log out everywhere."],
+      ["👀", "Open to explore", "Anyone can try it in guest mode, kept completely separate from the owner's data."],
     ];
-    const stack = ["HTML", "CSS", "Vanilla JavaScript", "localStorage", "YouTube Data API", "LeetCode dataset", "Spring Boot (coming)", "MySQL (coming)"];
+    const stack = [
+      ["Frontend", ["HTML", "CSS", "Vanilla JavaScript", "localStorage"]],
+      ["Backend", ["Java 21", "Spring Boot 4", "Spring Security", "OAuth 2.0 (GitHub & Google)", "JWT", "Spring Data JPA", "Hibernate"]],
+      ["Data & cloud", ["TiDB Cloud (MySQL)", "Render", "Docker", "GitHub Pages", "Resend"]],
+      ["APIs & data", ["YouTube Data API", "LeetCode dataset"]],
+    ];
 
     return `
       <section class="about-hero card">
@@ -50,9 +49,9 @@ const AboutPage = {
           <h1 class="about-title">Designed, built &amp; used by <span class="grad">${ABOUT.name}</span></h1>
           <p class="about-sub">4th year Computer Science student at Parul University, preparing for placements in December 2026.</p>
           <div class="about-chips">
-            <span class="chip">🛠️ Built from ${this.longDate(ABOUT.started)}</span>
-            <span class="chip on">🚀 Practice started ${this.longDate(ABOUT.practice)}</span>
-            <span class="chip">🔥 Day ${days} of the journey</span>
+            <span class="chip">🛠️ Built from scratch</span>
+            <span class="chip on">☁️ Synced across devices</span>
+            <span class="chip">🔥 Used every day</span>
           </div>
         </div>
       </section>
@@ -62,11 +61,11 @@ const AboutPage = {
           <span class="eyebrow">WHY I BUILT IT</span>
           <h2 class="section-title">One place to get placement-ready</h2>
           <p>I tried learning DSA from YouTube many times, and every time I ended up restarting from zero. What was missing was never motivation. It was <b>structure</b>: a plan for the day, a way to see progress, and something that kept me honest.</p>
-          <p>Paid planners gave me that structure, but they were too expensive for me as a student. So on ${this.longDate(ABOUT.started)} I decided to build my own, and on ${this.longDate(ABOUT.practice)} I started practising with it, from zero. A planner that knows how many hours I can study, splits my syllabus into real days, times every problem, remembers what I got wrong, and turns lectures, warm-ups and problems into progress I can actually see.</p>
+          <p>Paid planners gave me that structure, but they were too expensive for me as a student. So I decided to build my own, and I practise with it every day, starting from zero. A planner that knows how many hours I can study, splits my syllabus into real days, times every problem, remembers what I got wrong, and turns lectures, warm-ups and problems into progress I can actually see.</p>
           <p><b>AlgoQuest</b> is built for one goal: to walk into my placement season in December 2026 confident and ready. It is also my proof of work. A real project, built from scratch, that I use every single day.</p>
           <div class="signature">
             ${this.signatureHtml()}
-            <div class="sig-meta"><b>${ABOUT.name}</b><span class="muted small">${this.longDate(ABOUT.version)} · Vadodara, Gujarat</span></div>
+            <div class="sig-meta"><b>${ABOUT.name}</b><span class="muted small">Vadodara, Gujarat</span></div>
           </div>
         </section>
 
@@ -78,7 +77,11 @@ const AboutPage = {
           </section>
           <section class="card">
             <span class="eyebrow">BUILT WITH</span>
-            <div class="chips">${stack.map(x => `<span class="chip">${x}</span>`).join("")}</div>
+            ${stack.map(([group, items]) => `
+              <div class="stack-group">
+                <span class="stack-label">${group}</span>
+                <div class="chips">${items.map(x => `<span class="chip">${x}</span>`).join("")}</div>
+              </div>`).join("")}
             <p class="muted small" style="margin:12px 0 0">Made with patience, chai and a lot of late nights. ☕</p>
           </section>
         </aside>
