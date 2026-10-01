@@ -1,0 +1,43 @@
+# Frontend (frontend/ folder) ko GitHub Pages pe publish karta hai.
+# Sirf tab chalta hai jab frontend/ ya yeh file badle (backend ke changes pe nahi).
+name: Deploy frontend to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch: # GitHub pe "Run workflow" button se haath se bhi chala sakte ho
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Ek time pe ek hi deploy
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Package the frontend folder
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: frontend
+
+      - name: Publish
+        id: deployment
+        uses: actions/deploy-pages@v4
