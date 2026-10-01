@@ -203,20 +203,17 @@ const LoginScreen = {
   },
 
   // Free server so jaata hai: screen khulte hi use jagao, taaki button dabane tak woh ready ho.
-  // "no-cors": humein jawab padhna nahi, bas server tak "knock" karna hai.
+  // /api/hello hamare server ka public endpoint hai. Sirf tab "ready" jab jawab sach mein HAMARE
+  // server ka ho ({status: "running"}); Render ka "Not Found" ya "502" page ready nahi ginta.
   async wakeServer() {
     if (this.serverState === "waking" || this.serverState === "ready") return;
     this.serverState = "waking";
     this.paintStatus();
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), Api.TIMEOUT_MS);
     try {
-      await fetch(Api.BASE + "/actuator/health", { mode: "no-cors", cache: "no-store", signal: ctrl.signal });
-      this.serverState = "ready";
+      const r = await Api.get("/api/hello", { auth: false });
+      this.serverState = r?.status === "running" ? "ready" : "down";
     } catch {
       this.serverState = "down";
-    } finally {
-      clearTimeout(timer);
     }
     this.paintStatus();
   },
