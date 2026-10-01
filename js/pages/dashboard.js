@@ -302,8 +302,13 @@ const DashboardPage = {
     const won = badges.filter(b => b.done && b.on).sort((a, b) => String(b.on).localeCompare(String(a.on)));
     const next = badges.filter(b => !b.done).sort((a, b) => b.cur / b.goal - a.cur / a.goal)[0];
     if (!won.length) {
-      return `<div class="trophy-cab empty"><span class="tc-icon">🏆</span>
-        <span class="small">Trophy Cabinet is empty. First up: ${next.icon} <b>${next.name}</b> (${next.desc.toLowerCase()})</span></div>`;
+      // Khali cabinet: bada box nahi, baaki header jaisi chhoti pill (poori baat hover pe)
+      return `<div class="trophy-cab empty" title="First up: ${next.name} (${next.desc.toLowerCase()})">
+        <span class="tc-icon">🏆</span>
+        <span class="tc-label">Trophy Cabinet</span>
+        <span class="tc-goal">Next: ${next.icon} ${next.name}</span>
+        <span class="tc-count zero">0</span>
+      </div>`;
     }
     const latest = won[0];
     const item = b => `
@@ -755,20 +760,14 @@ const DashboardPage = {
             <div class="muted small">Why: ${x.desc}</div>
             <div class="small ${x.done ? "ok" : ""}">${x.done ? `✓ Earned on ${Insights.earnedText(x.on) || "—"}` : `Progress: ${x.cur} / ${x.goal}`}</div>
             ${x.done ? "" : `<span class="mini-bar"><span style="width:${Math.round(x.cur / x.goal * 100)}%"></span></span>`}`;
-          btip.hidden = false;
-          const box = tile.closest(".badges-card").getBoundingClientRect(), r = tile.getBoundingClientRect();
-          btip.style.left = Math.min(box.width - 244, Math.max(8, r.left - box.left - 100)) + "px";
-          btip.style.top = (r.bottom - box.top + 8) + "px";
+          UI.placeTip(btip, tile, tile.closest(".badges-card")); // neeche jagah na ho toh upar
         } else btip.hidden = true;
       }
       if (!tip) return;
       const cell = e.target.closest(".cal-cell[data-date]");
       if (!cell) { tip.hidden = true; return; }
       tip.innerHTML = this.dayTip(cell.dataset.date);
-      tip.hidden = false;
-      const box = cell.closest(".cal-card").getBoundingClientRect(), r = cell.getBoundingClientRect();
-      tip.style.left = Math.min(box.width - 236, Math.max(8, r.left - box.left - 100)) + "px";
-      tip.style.top = (r.bottom - box.top + 8) + "px";
+      UI.placeTip(tip, cell, cell.closest(".cal-card"));
     };
 
     // Har second chalta timer update karo (poora page dobara nahi banana)

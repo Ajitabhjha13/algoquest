@@ -464,11 +464,7 @@ const ProfilePage = {
     const p = Profile.data;
 
     // Hover tooltips: heatmap cells aur chart ke din
-    const place = (tip, el, boxSel) => {
-      const box = el.closest(boxSel).getBoundingClientRect(), r = el.getBoundingClientRect();
-      tip.style.left = Math.min(box.width - 240, Math.max(8, r.left - box.left + r.width / 2 - 115)) + "px";
-      tip.style.top = (r.bottom - box.top + 8) + "px";
-    };
+    const place = (tip, el, boxSel) => UI.placeTip(tip, el, el.closest(boxSel)); // neeche jagah na ho toh upar
     app.onmouseover = e => {
       const hmTip = document.getElementById("hm-tip"), chTip = document.getElementById("chart-tip");
       const cell = e.target.closest(".hm-cell[data-date]");

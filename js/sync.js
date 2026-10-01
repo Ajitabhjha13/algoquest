@@ -193,7 +193,9 @@ const Sync = {
           <span><strong>${x.warm}</strong> warm-ups done</span>
           <small>${extra}</small>
         </div>`;
-      const localExtra = me.lastActive ? `Last active ${this.fmtDay(me.lastActive)}` : "No activity yet";
+      const localExtra = me.lastActive
+        ? `Last active ${this.fmtDay(me.lastActive)}`
+        : score(me) > 0 ? "Changes made on this device" : "No activity yet";
       const cloudExtra = `Updated ${this.ago(c.updatedAt)}${c.updatedDevice ? ` on ${esc(c.updatedDevice)}` : ""}`;
       const isChoice = this.status === "choice";
 
@@ -217,7 +219,7 @@ const Sync = {
 
       if (action === "local") {
         await this.keepThisDevice();
-        if (this.status === "synced") showToast("Kept this device's progress. The cloud copy is saved in Cloud versions.");
+        if (this.status === "synced") UI.toast("Kept this device's progress. The cloud copy is saved in Cloud versions.");
       } else if (action === "cloud") {
         await this.useCloud();
       }
@@ -274,7 +276,7 @@ const Sync = {
     else this.done();
   },
 
-  async pull(cloud) {
+  async pull(cloud, { quiet = false } = {}) {
     const r = await Api.get("/api/sync");
     if (!r.data) { this.done(); return; }
     this.applyData(r.data);
@@ -284,7 +286,7 @@ const Sync = {
     this.saveMeta();
     this.done();
     const from = r.updatedDevice ? ` from ${r.updatedDevice}` : "";
-    showToast(`Updated with your latest progress${from}.`);
+    if (!quiet) UI.toast(`Updated with your latest progress${from}.`);
     if (typeof renderRoute === "function") renderRoute();
   },
 
@@ -300,6 +302,9 @@ const Sync = {
   },
 
   done() {
+    // "Last synced" = aakhri baar jab cloud se pakka hua ki sab barabar hai
+    this.meta.lastSyncedAt = Date.now();
+    this.saveMeta();
     this.retryIndex = 0;
     clearTimeout(this.retryTimer);
     this.setStatus("synced");
@@ -343,6 +348,55 @@ const Sync = {
     this.applying = true;
     try { Store.load(); } finally { this.applying = false; } // khali default data
     this.setStatus("off");
+  },
+
+  // Cloud versions se purana version wapas lao (server pe naya save banta hai, isliye undo possible)
+  async restoreVersion(revision) {
+    if (this.meta.dirty) await this.sync(); // pehle pending changes bhej do (woh bhi ek version ban jayein)
+    if (this.meta.dirty || this.status === "conflict" || this.status === "choice") {
+      throw new Error("Please let your changes finish syncing first.");
+    }
+    this.busy = true;
+    this.setStatus("syncing");
+    try {
+      const r = await Api.post(`/api/sync/snapshots/${revision}/restore`, { baseRevision: this.meta.revision });
+      await this.pull({ revision: r.revision }, { quiet: true });
+    } catch (err) {
+      this.handleError(err);
+      throw err;
+    } finally {
+      this.busy = false;
+    }
+  },
+
+  // Abhi ka haal, insaan ki bhasha mein (sidebar box, Settings card, phone dot sab yahi use karte hain)
+  // tone: ok (hara) | busy (peela, chal raha) | warn (peela, ruka) | bad (laal) | off
+  describe() {
+    switch (this.status) {
+      case "synced":
+        return { tone: "ok", label: "Synced", detail: this.meta.lastSyncedAt ? this.ago(this.meta.lastSyncedAt) : "" };
+      case "pending":
+      case "syncing":
+        return { tone: "busy", label: "Syncing…", detail: "" };
+      case "paused":
+        return { tone: "warn", label: "Sync paused", detail: this.message || "Trying again shortly." };
+      case "conflict":
+      case "choice":
+        return { tone: "warn", label: "Sync paused", detail: "Choose which progress to keep." };
+      case "error":
+        return { tone: "bad", label: "Can't sync", detail: this.message || "Something went wrong." };
+      default:
+        return { tone: "off", label: "Sync is off", detail: "" };
+    }
+  },
+
+  // "Sync now" / "Try now" button: intezaar chhodo, abhi koshish karo
+  retryNow() {
+    this.retryIndex = 0;
+    clearTimeout(this.retryTimer);
+    if (this.status === "conflict" || this.status === "choice") { this.openChoice(); return; }
+    if (this.status === "error") this.status = "pending";
+    this.sync();
   },
 
   // Test/debug ke liye: console mein Sync.info()

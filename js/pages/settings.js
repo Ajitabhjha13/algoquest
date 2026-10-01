@@ -62,16 +62,137 @@ const SettingsPage = {
             <span class="acct-chips">${chip("GitHub", u.githubLinked)}${chip("Google", u.googleLinked)}</span>
           </div>
         </div>
+        <div class="acct-sync" id="acct-sync">${this.syncRow()}</div>
         <p class="hint acct-note">${sessionNote}</p>
         <div class="btn-row">
           <button type="button" class="btn" data-account="logout">Log out</button>
           <button type="button" class="btn btn-danger" data-account="logout-all">Log out everywhere</button>
         </div>
+        <details class="acct-more" data-load="history">
+          <summary>Login history</summary>
+          <div class="acct-list" id="acct-history"><p class="hint">Loading…</p></div>
+        </details>
+        <details class="acct-more" data-load="versions">
+          <summary>Cloud versions</summary>
+          <div class="acct-list" id="acct-versions"><p class="hint">Loading…</p></div>
+        </details>
       </section>`;
+  },
+
+  // "30 Sep, 3:39 pm" jaisa (India time)
+  fmtWhen(t) {
+    return new Date(t).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+  },
+
+  // Dropdown khulte hi data lao (pehle se nahi, taaki Settings jaldi khule)
+  async loadMore(kind) {
+    if (kind === "history") return this.loadHistory();
+    if (kind === "versions") return this.loadVersions();
+  },
+
+  async loadHistory() {
+    const box = document.getElementById("acct-history");
+    if (!box) return;
+    try {
+      const rows = await Api.get("/api/auth/history");
+      box.innerHTML = rows.length ? `
+        <ul class="acct-rows">
+          ${rows.map(r => `
+            <li class="${r.success ? "" : "denied"}">
+              <span class="ar-icon">${r.success ? "✅" : "🚫"}</span>
+              <span class="ar-main">
+                <b>${esc(r.device || "Unknown device")}</b>
+                <small>${r.success ? "Signed in" : "Blocked attempt"} with ${r.provider === "google" ? "Google" : "GitHub"}${r.success ? "" : ` (${esc(r.identity || "unknown")})`}${r.ipAddress ? ` · ${esc(r.ipAddress)}` : ""}</small>
+              </span>
+              <time>${this.fmtWhen(r.createdAt)}</time>
+            </li>`).join("")}
+        </ul>
+        <p class="hint">Showing your last ${rows.length} sign-in${rows.length > 1 ? "s" : ""}. Don't recognise one? Use Log out everywhere.</p>`
+        : `<p class="hint">No sign-ins yet.</p>`;
+    } catch (err) {
+      box.innerHTML = `<p class="hint">Couldn't load your login history. ${esc(err.message)}</p>`;
+    }
+  },
+
+  async loadVersions() {
+    const box = document.getElementById("acct-versions");
+    if (!box) return;
+    try {
+      const rows = await Api.get("/api/sync/snapshots");
+      const kb = b => b >= 1024 ? `${Math.round(b / 1024)} KB` : `${b} bytes`;
+      box.innerHTML = `
+        <ul class="acct-rows">
+          <li class="current">
+            <span class="ar-icon">☁️</span>
+            <span class="ar-main"><b>Current version</b><small>Version ${Sync.meta.revision} · in use now</small></span>
+          </li>
+          ${rows.map(r => `
+            <li>
+              <span class="ar-icon">🕘</span>
+              <span class="ar-main">
+                <b>${this.fmtWhen(r.savedAt)}</b>
+                <small>Version ${r.revision} · ${esc(r.device || "Unknown device")} · ${kb(r.sizeBytes)}</small>
+              </span>
+              <button type="button" class="acct-sync-btn" data-account="restore" data-rev="${r.revision}" data-when="${this.fmtWhen(r.savedAt)}">Restore</button>
+            </li>`).join("")}
+        </ul>
+        <p class="hint">${rows.length
+          ? "AlgoQuest keeps your last 10 versions. Restoring saves your current progress as a version first, so you can always undo it."
+          : "Older versions appear here after your progress changes a few times."}</p>`;
+    } catch (err) {
+      box.innerHTML = `<p class="hint">Couldn't load your cloud versions. ${esc(err.message)}</p>`;
+    }
+  },
+
+  // Backup section: "Use cloud" chunne se pehle is device ki copy bachi hai? Toh wapas laane ka option
+  safetyRow() {
+    if (!Auth.isSignedIn() || Store.isSandbox()) return "";
+    let s = null;
+    try { s = JSON.parse(localStorage.getItem("dsaPlanner.safety")); } catch { /* khali */ }
+    if (!s?.data) return "";
+    return `
+      <div class="safety-row">
+        <span>💾 A copy of this device's progress was saved on <b>${this.fmtWhen(s.savedAt)}</b>, before you chose the cloud version.</span>
+        <button type="button" class="btn" id="safety-restore">Bring it back</button>
+      </div>`;
+  },
+
+  // Account card ki sync wali line (Sync ki halat badalte hi apne-aap taaza hoti hai)
+  syncRow() {
+    const d = Sync.describe();
+    const when = d.tone === "ok" && Sync.meta.lastSyncedAt
+      ? `Last synced ${d.detail}`
+      : d.detail;
+    return `
+      <span class="acct-sync-dot ${d.tone}"></span>
+      <span class="acct-sync-text"><b>${d.label}</b>${when ? `<small>${esc(when)}</small>` : ""}</span>
+      <button type="button" class="acct-sync-btn" data-account="sync-now" ${d.tone === "busy" ? "disabled" : ""}>Sync now</button>`;
   },
 
   // Account card ke buttons
   async handleAccount(action, btn) {
+    if (action === "restore") {
+      const { action: go } = await Modal.open({
+        title: "Restore this version?",
+        html: `<p>Your progress will go back to the version from <b>${esc(btn.dataset.when)}</b>, on this device and in the cloud.</p>
+               <p class="hint">Your current progress is kept as a version too, so you can undo this.</p>`,
+        actions: [{ label: "Cancel", value: null }, { label: "Restore", value: "go", kind: "primary" }],
+      });
+      if (go !== "go") return;
+      btn.disabled = true;
+      try {
+        await Sync.restoreVersion(Number(btn.dataset.rev));
+        showToast(`Restored the version from ${btn.dataset.when}.`);
+      } catch (err) {
+        btn.disabled = false;
+        showToast(`Could not restore: ${err.message}`);
+      }
+      return;
+    }
+    if (action === "sync-now") {
+      Sync.retryNow();
+      return;
+    }
     if (action === "github" || action === "google") {
       Auth.signIn(action);
       return;
@@ -117,7 +238,13 @@ const SettingsPage = {
       return;
     }
     if (action === "logout-all") {
-      if (!confirm("Log out on every device where you are signed in? You will need to sign in again here too.")) return;
+      const { action: go } = await Modal.open({
+        title: "Log out everywhere?",
+        html: `<p>You'll be signed out on <b>every device</b> where you use AlgoQuest, including this one.</p>
+               <p class="hint">Use this if you lost a device or see a sign-in you don't recognise. Your progress stays safe.</p>`,
+        actions: [{ label: "Cancel", value: null }, { label: "Log out everywhere", value: "go", kind: "danger" }],
+      });
+      if (go !== "go") return;
       btn.disabled = true;
       try {
         await Auth.signOutEverywhere();
@@ -217,7 +344,10 @@ const SettingsPage = {
 
       <section class="card form-section danger-zone">
         <h2 class="section-title">Backup</h2>
-        <p class="hint">Your data is saved only in this browser. Download a backup once a week.</p>
+        <p class="hint">${Auth.isSignedIn() && !Store.isSandbox()
+          ? "Your progress is saved in this browser and backed up to the cloud automatically. A downloaded backup is an extra copy you keep."
+          : "Your progress is saved only in this browser. Sign in to back it up, or download a backup once a week."}</p>
+        ${this.safetyRow()}
         <div class="btn-row">
           <button id="export-btn" class="btn">Download backup</button>
           <label class="btn">
@@ -332,10 +462,37 @@ const SettingsPage = {
       }
     });
 
-    document.getElementById("reset-warmup-btn").addEventListener("click", () => {
-      if (!confirm("Warm-ups will restart from Round 1 with a new shuffle. The Too easy list will also be cleared.")) return;
+    document.getElementById("reset-warmup-btn").addEventListener("click", async () => {
+      const { action } = await Modal.open({
+        title: "Restart warm-up rounds?",
+        html: `<p>Warm-ups will restart from Round 1 with a new shuffle. Your <b>Too easy</b> list will also be cleared.</p>`,
+        actions: [{ label: "Cancel", value: null }, { label: "Restart", value: "go", kind: "primary" }],
+      });
+      if (action !== "go") return;
       Store.resetWarmup();
       this.toast("Warm-up restarted");
+    });
+
+    // Dropdowns: khulte hi data lao
+    document.querySelectorAll("details.acct-more").forEach(d => {
+      d.addEventListener("toggle", () => { if (d.open) this.loadMore(d.dataset.load); });
+    });
+
+    // Safety copy wapas lao
+    document.getElementById("safety-restore")?.addEventListener("click", async () => {
+      const { action } = await Modal.open({
+        title: "Bring back the saved copy?",
+        html: `<p>The saved copy replaces your current progress, on this device and in the cloud.</p>
+               <p class="hint">Your current progress is kept in Cloud versions, so you can undo this.</p>`,
+        actions: [{ label: "Cancel", value: null }, { label: "Bring it back", value: "go", kind: "primary" }],
+      });
+      if (action !== "go") return;
+      const s = JSON.parse(localStorage.getItem("dsaPlanner.safety"));
+      Store.state = s.data;
+      Store.save(); // sync isse cloud pe bhej dega
+      localStorage.removeItem("dsaPlanner.safety");
+      await renderRoute();
+      showToast("The saved copy is back.");
     });
 
     document.getElementById("reset-btn").addEventListener("click", async () => {
@@ -359,7 +516,17 @@ const SettingsPage = {
   },
 };
 
-// Login/logout hua (kisi bhi wajah se) aur Settings khula hai? Account card dobara banao
-window.addEventListener("algoquest:auth-changed", () => {
+// Login ki details badli (naya profile / naya token) aur Settings khula hai? Card dobara banao.
+// (Logout pe router khud login screen dikhata hai, isliye wahan dobara render ki zaroorat nahi.)
+window.addEventListener("algoquest:auth-changed", e => {
+  if (["manual", "expired", "everywhere"].includes(e.detail?.reason)) return;
   if (location.hash.startsWith("#/settings")) renderRoute();
 });
+
+// Sync ki halat badle ya har minute: Settings card ki sync line taaza karo (poora page nahi)
+const refreshSyncRow = () => {
+  const el = document.getElementById("acct-sync");
+  if (el) el.innerHTML = SettingsPage.syncRow();
+};
+window.addEventListener("algoquest:sync", refreshSyncRow);
+setInterval(refreshSyncRow, 60000);

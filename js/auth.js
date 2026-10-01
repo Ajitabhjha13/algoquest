@@ -134,8 +134,8 @@ const Auth = {
     Api.setToken(token);
     this.reauthRequired = false;
     this.refreshUser()
-      .then(u => showToast(`Signed in as ${u.name}`))
-      .catch(() => showToast("Signed in, but your profile could not be loaded yet."));
+      .then(u => UI.toast(`Signed in as ${u.name}`))
+      .catch(() => UI.toast("Signed in, but your profile could not be loaded yet."));
   },
 
   init() {
@@ -150,7 +150,7 @@ const Auth = {
     window.addEventListener("algoquest:signed-out", () => {
       if (!Api.token()) return;
       this.signOut("expired");
-      showToast("Your session has ended. Please sign in again.");
+      UI.toast("Your session has ended. Please sign in again.");
     });
 
     // Auto-renew kab check karein:

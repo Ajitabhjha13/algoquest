@@ -236,9 +236,10 @@ body.login-open { overflow: hidden; }
   .login-line { white-space: normal; } /* chhoti screen pe line tootna theek hai */
   .login-private br { display: none; }
 }
-@media (max-width: 380px) {
-  .login-brand-text { display: none; }
+@media (max-width: 420px) {
+  .login-brand-text { display: none; } /* chhoti screen: sirf logo, taaki buttons ek line mein rahein */
 }
+.login-link { white-space: nowrap; }
 
 /* =========================================================
    PUBLIC VIEW: login screen se About khola (bina login)
@@ -380,3 +381,113 @@ body.public-view #public-bar { order: -1; }
 @media (max-width: 520px) {
   .sync-compare { grid-template-columns: 1fr; }
 }
+
+/* =========================================================
+   SYNC STATUS: sidebar ki chhoti patti, Settings line, phone dot
+   Rang: ok = hara, busy = peela (chal raha), warn = peela (ruka), bad = laal
+   ========================================================= */
+.side-status.sync {
+  gap: 6px; padding: 8px 10px;
+  background: transparent; border-color: var(--line);
+}
+.side-status.sync.warn { background: rgba(244, 183, 64, 0.07); border-color: rgba(244, 183, 64, 0.45); }
+.side-status.sync.bad  { background: rgba(255, 107, 107, 0.07); border-color: rgba(255, 107, 107, 0.45); }
+.side-status .sync-line {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text); text-align: left;
+}
+.side-status .sync-line:hover { color: var(--accent); border: 0; }
+.side-status .sync-line span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit; }
+.side-status .sync-line i, .acct-sync-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--muted);
+}
+.side-status.sync.ok i, .acct-sync-dot.ok { background: #2ee6a6; box-shadow: 0 0 8px rgba(46, 230, 166, 0.6); }
+.side-status.sync.busy i, .acct-sync-dot.busy { background: #f4b740; animation: login-pulse 1s infinite; }
+.side-status.sync.warn i, .acct-sync-dot.warn { background: #f4b740; }
+.side-status.sync.bad i, .acct-sync-dot.bad { background: #ff6b6b; }
+.side-status .sync-detail { font-size: 12px; white-space: normal; }
+.side-status.sync button:not(.sync-line) { margin-top: 2px; }
+
+/* Settings card ki sync line */
+.acct-sync {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 0 12px; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 40%, var(--surface));
+}
+.acct-sync-text { display: flex; flex-direction: column; flex: 1; min-width: 0; font-size: 13.5px; }
+.acct-sync-text small { color: var(--muted); font-size: 12px; }
+.acct-sync-btn {
+  font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  padding: 6px 12px; border-radius: 8px; flex: none;
+  color: var(--text); background: transparent; border: 1px solid var(--line);
+}
+.acct-sync-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.acct-sync-btn:disabled { opacity: 0.5; cursor: wait; }
+
+/* Phone: Settings icon pe chhota dot (sidebar box wahan nahi dikhta) */
+.nav-sync-dot { display: none; }
+@media (max-width: 768px) {
+  .nav-link[data-page="settings"] { position: relative; }
+  .nav-sync-dot.ok, .nav-sync-dot.busy, .nav-sync-dot.warn, .nav-sync-dot.bad {
+    display: block; position: absolute; top: 6px; right: calc(50% - 16px);
+    width: 8px; height: 8px; border-radius: 50%;
+    border: 2px solid var(--surface);
+  }
+  .nav-sync-dot.ok { background: #2ee6a6; }
+  .nav-sync-dot.busy { background: #f4b740; animation: login-pulse 1s infinite; }
+  .nav-sync-dot.warn { background: #f4b740; }
+  .nav-sync-dot.bad { background: #ff6b6b; }
+}
+
+/* =========================================================
+   LOGIN HISTORY / CLOUD VERSIONS dropdowns (Settings)
+   ========================================================= */
+.acct-more {
+  margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px;
+}
+.acct-more summary {
+  cursor: pointer; list-style: none; font-weight: 700; font-size: 14px;
+  display: flex; align-items: center; gap: 8px; user-select: none;
+}
+.acct-more summary::-webkit-details-marker { display: none; }
+.acct-more summary::after {
+  content: "▾"; margin-left: auto; color: var(--muted); transition: transform 0.15s;
+}
+.acct-more[open] summary::after { transform: rotate(180deg); }
+.acct-more summary:hover { color: var(--accent); }
+.acct-list { margin-top: 10px; }
+.acct-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.acct-rows li {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 12px; border-radius: 10px; font-size: 13.5px;
+  border: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 40%, var(--surface));
+}
+.acct-rows li.denied { border-color: rgba(255, 107, 107, 0.35); }
+.acct-rows li.current { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.ar-icon { flex: none; width: 22px; text-align: center; }
+.ar-main { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.ar-main small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct-rows time { flex: none; color: var(--muted); font-size: 12px; }
+.acct-list .hint { margin-top: 10px; }
+
+/* Backup section: "use cloud" se pehle wali copy */
+.safety-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin: 0 0 14px; padding: 12px 14px; border-radius: 10px; font-size: 13.5px; line-height: 1.5;
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+}
+.safety-row span { flex: 1; min-width: 220px; }
+
+@media (max-width: 520px) {
+  .acct-rows li { flex-wrap: wrap; }
+  .acct-rows time { width: 100%; padding-left: 34px; }
+}
+
+/* Khali Trophy Cabinet: bade box ki jagah chhoti pill (jaise trophies hone pe dikhti hai) */
+.trophy-cab.empty {
+  display: inline-flex; max-width: 100%; border-radius: 999px; white-space: nowrap;
+}
+.trophy-cab.empty .tc-goal { color: var(--muted); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.trophy-cab.empty .tc-count.zero { background: var(--line); color: var(--muted); }

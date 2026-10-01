@@ -119,7 +119,7 @@ const LoginScreen = {
           <h1 id="login-title">Algo<em>Quest</em></h1>
           <p class="login-tag">Grind · Track · Crack</p>
 
-          <h2 class="login-hello">${this.greeting()}, Ajitabh 👋</h2>
+          <h2 class="login-hello">${this.greeting()}, Ajitabh&nbsp;👋</h2>
           <p class="login-line">From arrays to offer letters, your streak is waiting.</p>
 
           ${errorBox}
@@ -131,7 +131,7 @@ const LoginScreen = {
 
           <p class="login-status" aria-live="polite"></p>
 
-          <p class="login-private">🔒 A private workspace. Only its owner can sign in,<br>but you're always welcome to explore as a guest.</p>
+          <p class="login-private">🔒 A private workspace. Only its owner can sign in, <br>but you're always welcome to explore as a guest.</p>
         </section>
       </main>
 
@@ -260,11 +260,12 @@ const Notices = {
     if (Sync.status === "conflict" || Sync.status === "choice") return { type: "conflict" };
     // Normal renew chal raha ho toh warning mat dikhao; sirf tab jab renew na ho paaye
     const failedRenew = Auth.expiringSoon() && Auth.lastRenewTry > 0 && !Auth.renewing;
-    if (Auth.reauthRequired || failedRenew) {
+    const hiddenToday = localStorage.getItem(this.HIDE_KEY) === new Date().toDateString();
+    if ((Auth.reauthRequired || failedRenew) && !hiddenToday) {
       const days = Math.max(1, Math.ceil((Auth.expiresAt() - Date.now()) / 86400000));
       return { type: "expiry", days };
     }
-    return null;
+    return { type: "sync" }; // baaki time: sync ka haal
   },
 
   // Sidebar mein (About ke theek upar) ek chhoti jagah. Page ke content ke upar kabhi nahi aata.
@@ -286,13 +287,26 @@ const Notices = {
     const el = this.slot();
     if (!el) return;
     const n = document.body.classList.contains("login-open") ? null : this.current();
-    const today = new Date().toDateString();
-    if (!n || (n.type === "expiry" && localStorage.getItem(this.HIDE_KEY) === today)) {
+    this.renderNavDot(n);
+    if (!n) {
       el.hidden = true;
       el.innerHTML = "";
       return;
     }
     el.hidden = false;
+    if (n.type === "sync") {
+      // Chhoti ek-line wali patti: "● Synced · 2 min ago" (click = Settings)
+      const d = Sync.describe();
+      const problem = d.tone === "warn" || d.tone === "bad";
+      el.className = `side-status sync ${d.tone}`;
+      el.innerHTML = `
+        <button type="button" class="sync-line" data-notice="sync-open" title="Open sync settings">
+          <i></i><span>${d.label}${!problem && d.detail ? ` · ${d.detail}` : ""}</span>
+        </button>
+        ${problem ? `<span class="sync-detail">${esc(d.detail)}</span>
+          <button type="button" data-notice="sync-now">Try now</button>` : ""}`;
+      return;
+    }
     el.className = `side-status ${n.type}`;
     el.innerHTML = n.type === "guest"
       ? `<b>👀 Guest mode</b>
@@ -312,12 +326,33 @@ const Notices = {
          <button type="button" data-notice="renew">Renew now</button>`;
   },
 
+  // Phone pe sidebar nahi dikhta: Settings icon pe chhota rangin dot (hara/peela/laal)
+  renderNavDot(n) {
+    const link = document.querySelector('.nav-link[data-page="settings"]');
+    if (!link) return;
+    let dot = link.querySelector(".nav-sync-dot");
+    if (!dot) {
+      dot = document.createElement("span");
+      dot.className = "nav-sync-dot";
+      link.appendChild(dot);
+    }
+    let tone = "";
+    if (n?.type === "sync") tone = Sync.describe().tone;
+    else if (n?.type === "conflict" || n?.type === "expiry") tone = "warn";
+    else if (n?.type === "offline") tone = "warn";
+    dot.className = `nav-sync-dot ${tone === "off" ? "" : tone}`;
+  },
+
   async onClick(e) {
     const b = e.target.closest("[data-notice]");
     if (!b) return;
     const action = b.dataset.notice;
     if (action === "signin") {
       location.hash = "#/login";
+    } else if (action === "sync-open") {
+      location.hash = "#/settings";
+    } else if (action === "sync-now") {
+      Sync.retryNow();
     } else if (action === "review") {
       Sync.openChoice();
     } else if (action === "exit") {
@@ -338,6 +373,8 @@ const Notices = {
 // Login ki halat ya sync ki halat badle, ya tab pe wapas aao: notice dobara socho
 window.addEventListener("algoquest:auth-changed", () => Notices.render());
 window.addEventListener("algoquest:sync", () => Notices.render());
+// "2 min ago" jaisa time har minute taaza rahe
+setInterval(() => { if (Sync.status === "synced") Notices.render(); }, 60000);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") Notices.render();
 });
