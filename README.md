@@ -154,40 +154,7 @@ Anyone can try it in **guest mode**, a separate sandbox that never touches the o
 
 ## 🏗️ Architecture
 
-```mermaid
-flowchart TB
-    U(["👤 Browser<br/>laptop / phone"])
-
-    subgraph GH["GitHub"]
-        direction TB
-        REPO["algoquest monorepo<br/>frontend/ · backend/"]
-        ACT["GitHub Actions<br/>pages.yml"]
-        PAGES["GitHub Pages<br/>static website"]
-        REPO -- "push to frontend/" --> ACT --> PAGES
-    end
-
-    subgraph RD["Render · Singapore"]
-        API["Spring Boot 4 API<br/>Docker · Java 21"]
-    end
-
-    subgraph EXT["External services"]
-        direction TB
-        DB[("TiDB Cloud<br/>MySQL · Singapore")]
-        OAUTH["GitHub / Google<br/>OAuth 2.0"]
-        MAIL["Resend<br/>alert emails"]
-        YT["YouTube Data API"]
-        CRON["cron-job.org<br/>keep-alive"]
-    end
-
-    U -- "HTML · CSS · JS" --> PAGES
-    U -- "REST + JWT (CORS)" --> API
-    U -. "playlist import" .-> YT
-    REPO -- "push to backend/" --> API
-    API -- "JPA · TLS" --> DB
-    API -- "sign-in" --> OAUTH
-    API -- "HTTPS API" --> MAIL
-    CRON -. "/actuator/health" .-> API
-```
+<p align="center"><img src="docs/diagrams/architecture.png" alt="AlgoQuest architecture"></p>
 
 | Part | Where it runs | Notes |
 |---|---|---|
@@ -202,30 +169,7 @@ flowchart TB
 
 ## 🔑 Sign-in flow
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor U as Owner
-    participant W as Website (GitHub Pages)
-    participant A as API (Spring Boot)
-    participant P as GitHub / Google
-    participant D as TiDB
-
-    U->>W: Continue with GitHub
-    W->>A: /oauth2/authorization/github
-    A->>P: Redirect to consent screen
-    U->>P: Authorize AlgoQuest
-    P->>A: Callback with code
-    A->>P: Exchange code → profile
-    A->>A: Owner allowlist check
-    A->>D: Link account + log sign-in (IP, device)
-    A-->>U: 📧 Alert email if it's a new device
-    A->>W: Redirect back with a signed JWT
-    W->>W: Save token, clean URL instantly
-    W->>A: GET /api/me (Bearer JWT)
-    A-->>W: Profile + session end date
-    Note over W,A: Token auto-renews while in use,<br/>hard limit of 60 days, "log out everywhere" revokes all
-```
+<p align="center"><img src="docs/diagrams/sign-in-flow.png" alt="Sign-in sequence"></p>
 
 A visitor who is not on the allowlist is sent back to the login screen with a friendly *"This is a private planner"* message, the attempt is logged, and the owner gets an email.
 
@@ -235,23 +179,7 @@ A visitor who is not on the allowlist is sent back to the login screen with a fr
 
 Every save is local first. The sync engine (`frontend/js/sync.js`) wraps `Store.save()` and pushes changes to the cloud a few seconds later.
 
-```mermaid
-flowchart TD
-    S["Store.save()"] --> C{"Data really<br/>changed?"}
-    C -- no --> X(["nothing to do"])
-    C -- yes --> D["mark dirty<br/>debounce 5 s · max 30 s"]
-    D --> M["GET /api/sync/meta"]
-    M --> R{"Cloud revision<br/>vs mine"}
-    R -- same --> P["PUT /api/sync<br/>baseRevision = mine"]
-    P --> OK(["✅ Synced · new revision"])
-    P -- "409 someone saved first" --> R
-    R -- "cloud ahead, nothing local" --> L["Pull cloud copy"] --> OK
-    R -- "cloud ahead + local changes" --> Q{"Same data?"}
-    Q -- yes --> A["Adopt revision"] --> OK
-    Q -- no --> POP["⚖️ Conflict popup<br/>Keep this device / Use cloud"]
-    POP --> OK
-    M -- "offline · 5xx · 429" --> B["Retry 10 s → 30 s → 1 m → 5 m"] --> M
-```
+<p align="center"><img src="docs/diagrams/sync-engine.png" alt="Sync engine flow" width="70%"></p>
 
 - **Optimistic locking**: every save carries `baseRevision`; the database only accepts it if nobody saved in between (`UPDATE ... WHERE revision = ?`).
 - **No data loss**: before anything is overwritten, the losing side is kept (a local safety copy or a cloud version). The last 10 versions can be restored, and a restore is itself undoable.
