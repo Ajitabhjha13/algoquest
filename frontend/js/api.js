@@ -21,10 +21,10 @@ class ApiError extends Error {
 
 const Api = {
   // Local pe laptop wala server; GitHub Pages pe Render wala.
-  // TODO (Step 8): deploy ke baad asli Render URL yahan daalna hai.
+  // Production: Render (Singapore) pe chalta hamara Spring Boot backend.
   BASE: ["localhost", "127.0.0.1"].includes(location.hostname)
     ? "http://localhost:8080"
-    : "https://algoquest-api.onrender.com",
+    : "https://algoquest-api-45ay.onrender.com",
 
   // Render free server so jaata hai; jaagne mein 30-60 sec lagte hain
   TIMEOUT_MS: 70000,
